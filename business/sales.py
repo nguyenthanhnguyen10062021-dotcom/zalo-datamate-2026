@@ -1,5 +1,5 @@
 """Sales operations on canonical loader tables, without questions or gold data."""
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal, ROUND_HALF_UP
 from functools import wraps
 import json
@@ -27,6 +27,9 @@ class Answer:
     type: str
     answer: object = None
     reason: str | None = None
+    # 'low': cách tính chưa có câu train nào kiểm chứng (luật chỉ có ở rulebook public, hoặc biến thể chưa gặp).
+    # Chỉ để tầng agent quyết định abstain; không ghi vào submission.
+    confidence: str = 'normal'
 
     def to_submission(self, question_id: str) -> dict:
         result = {'id': question_id, 'type': self.type}
@@ -41,8 +44,8 @@ class Answer:
         if self.type != 'list':
             return self
         if not self.answer:
-            return Answer('unanswerable', reason=self.reason or 'Không có đối tượng')
-        return Answer('string', self.answer[0], self.reason)
+            return Answer('unanswerable', reason=self.reason or 'Không có đối tượng', confidence=self.confidence)
+        return Answer('string', self.answer[0], self.reason, self.confidence)
 
 
 @dataclass(frozen=True)
@@ -67,6 +70,15 @@ def _answer(method):
             return method(*args, **kwargs)
         except _Unavailable as e:
             return Answer('unanswerable', reason=str(e))
+    return call
+
+
+def _low_confidence(method):
+    """Đánh dấu confidence='low' cho kết quả của API chưa có đáp án train để kiểm chứng."""
+    @wraps(method)
+    def call(*args, **kwargs):
+        result = method(*args, **kwargs)
+        return replace(result, confidence='low') if result.type != 'unanswerable' else result
     return call
 
 
@@ -475,7 +487,9 @@ class SalesMetrics:
         if not any(totals.values()):
             raise _Unavailable('Không có doanh thu/đơn hợp lệ trong kỳ')
         sign = -1 if kind == 'max' else 1
-        return Answer('date', min(totals, key=lambda key: (sign*totals[key], key)))
+        # kind='min': train không có câu nào kiểm chứng (ngày trống = 0 là cách hiểu của mình)
+        return Answer('date', min(totals, key=lambda key: (sign*totals[key], key)),
+                      confidence='low' if kind == 'min' else 'normal')
 
     @_answer
     def revenue_series(self, periods: list, filters: Filters = Filters()):
@@ -613,6 +627,7 @@ class SalesMetrics:
     # ---- Luật chỉ có trong rulebook public: mỗi API đòi đúng dòng luật, thiếu -> UnsupportedRule ----
 
     @_answer
+    @_low_confidence
     def loyal_customers(self, period: DateRange, k: int = 1):
         """Khách trung thành nhất: nhiều ngày có mua (đơn hợp lệ) nhất trong kỳ."""
         self.rules.require('Khách trung thành nhất','nhieu ngay co mua nhat')
@@ -622,6 +637,7 @@ class SalesMetrics:
         return self._rank(days.groupby(orders[key]).nunique().to_dict(),labels,k)
 
     @_answer
+    @_low_confidence
     def big_spender_customers(self, period: DateRange, k: int = 1):
         """Khách sộp nhất: giá trị trung bình một đơn cao nhất, chỉ xét khách có từ N đơn trở lên (N đọc từ luật)."""
         rule = folded(self.rules.require('Khách sộp nhất','gia tri trung binh mot don'))
@@ -637,6 +653,7 @@ class SalesMetrics:
         return self._rank(grouped,labels,k)
 
     @_answer
+    @_low_confidence
     def fickle_customers(self, period: DateRange, k: int = 1):
         """Khách hay đổi ý nhất: nhiều đơn huỷ nhất trong kỳ."""
         self.rules.require('Khách hay đổi ý nhất','nhieu don huy nhat')
@@ -647,15 +664,18 @@ class SalesMetrics:
         return self._rank(cancelled.groupby(key).size().to_dict(),labels,k)
 
     @_answer
+    @_low_confidence
     def favorite_products(self, period: DateRange, k: int = 1, filters: Filters = Filters()):
         """Mặt hàng được ưa chuộng nhất: có mặt trong nhiều đơn (hợp lệ) nhất."""
         self.rules.require('Mặt hàng được ưa chuộng nhất','nhieu don nhat')
         return self.top_products(period,k=k,metric='orders',filters=filters)
 
     @_answer
+    @_low_confidence
     def hardworking_staff(self, period: DateRange, k: int = 1):
         """Nhân viên chăm chỉ nhất: nhiều ngày làm việc (ngày có ít nhất một đơn hợp lệ của người đó) nhất.
-        CHƯA CHẮC: luật không nói rõ đơn huỷ/trả có tính là ngày làm việc; ở đây theo §1 Số đơn (bỏ huỷ, trả)."""
+        Bỏ đơn huỷ/trả để nhất quán với định nghĩa "số đơn" ở §1. Phiếu bảo hành không phải đơn huỷ/trả nên
+        vẫn tính, đúng như luật public ghi "kể cả phiếu bảo hành"."""
         self.rules.require('Nhân viên, thợ chăm chỉ nhất','nhieu ngay lam viec nhat','ngay co it nhat mot don')
         self._ranking_rules()
         orders = self._staff_orders(period)
@@ -663,12 +683,14 @@ class SalesMetrics:
         return self._rank(grouped,{who:who for who in grouped},k)
 
     @_answer
+    @_low_confidence
     def busiest_day(self, period: DateRange):
         """Ngày đắt khách nhất: ngày có nhiều đơn (hợp lệ) nhất."""
         self.rules.require('Ngày đắt khách nhất','nhieu don nhat')
         return self.best_period(period,granularity='day',metric='orders',kind='max')
 
     @_answer
+    @_low_confidence
     def peak_hour(self, period: DateRange):
         """Giờ cao điểm: khung một giờ tròn theo giờ tạo đơn có nhiều đơn nhất; trả giờ bắt đầu (number).
         Bằng nhau: giờ sớm hơn (CHƯA CHẮC, rulebook chỉ nói xếp theo mã/tên)."""
@@ -686,6 +708,7 @@ class SalesMetrics:
         return Answer('number',int(min(counts.index,key=lambda h:(-counts[h],h))))
 
     @_answer
+    @_low_confidence
     def weekday_average(self, period: DateRange, weekday: int, metric: str = 'revenue'):
         """Trung bình mỗi ngày thứ X (weekday 0 = thứ Hai … 6 = Chủ nhật): chia cho số ngày thứ X trong kỳ,
         kể cả ngày không có đơn. Kỳ được cắt theo khoảng dữ liệu và hôm nay như mọi phép tính khác."""

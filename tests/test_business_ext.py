@@ -254,3 +254,16 @@ def test_public_only_rules_unsupported_without_rows(tables, ext_rules, call):
 def test_customer_count_needs_no_names_when_codes_exist(tables, ext_rules):
     tables['don_hang'] = tables['don_hang'].drop(columns='ten_khach')
     assert engine(tables, ext_rules).customer_count(MARCH, min_orders=3).answer == 1
+
+
+def test_confidence_low_for_unverified_variants(tables, ext_rules, public_rules):
+    e = engine(tables, ext_rules)
+    assert e.best_period(MARCH).confidence == 'normal'
+    low = e.best_period(MARCH, kind='min')
+    assert low.confidence == 'low' and 'confidence' not in low.to_submission('q')
+    p = engine(tables, public_rules)
+    for answer in (p.loyal_customers(MARCH), p.favorite_products(MARCH), p.busiest_day(MARCH), p.peak_hour(MARCH),
+                   p.weekday_average(MARCH, 0), p.hardworking_staff(MARCH)):
+        assert answer.confidence == 'low', answer
+    assert p.loyal_customers(MARCH).single().confidence == 'low'
+    assert e.top_staff(MARCH).single().confidence == 'normal'
