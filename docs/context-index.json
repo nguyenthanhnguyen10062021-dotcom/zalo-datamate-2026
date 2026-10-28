@@ -1,0 +1,34 @@
+{
+  "entries": [
+    {
+      "id": "business-error-and-filter-contract",
+      "touches": ["business/*", "tests/test_business*", "verify_business.py"],
+      "read": ["docs/business.md", "ai_collaboration/DECISIONS.md"],
+      "summary": "Giữ dependency-scoped validation, ORPHAN khi cần dòng hàng, thứ tự loại hủy/trả và phân biệt DataError/UnsupportedRule với unanswerable. Patch review 04 đã vào code; các đoạn chưa áp dụng ở lượt cũ là lịch sử."
+    },
+    {
+      "id": "loader-train-only-mapping",
+      "touches": ["loader/*", "load_all.py", "tests/test_parsers.py", "tests/test_abbrev_infer.py"],
+      "read": ["loader/AGENTS.md", "surveys/DESIGN.md", "README.md"],
+      "summary": "Mapping tổng quát từ README train và bằng chứng giá trị; không fit public test hoặc theo ID. Mapping thiếu/nhập nhằng phải giữ provenance, không đoán theo gold."
+    },
+    {
+      "id": "validation-denominators",
+      "touches": ["evaluate/*", "verify_business.py", "check_with_gold.py", "generalize_check.py", "scripts/*", "tests/test_business_verification.py"],
+      "read": ["docs/validation.md", "docs/harness-engineering.md"],
+      "summary": "Verifier là hồi quy tập chọn lọc; công bố total/selected/skipped/compared/errors. Không suy toàn-train PA hoặc tính đúng NLU từ 409 câu. full/CI chỉ dùng fixture tổng hợp."
+    },
+    {
+      "id": "queryplan-next-step",
+      "touches": ["business/*", "ai_collaboration/*"],
+      "read": ["docs/PROGRESS.md", "ai_collaboration/DECISIONS.md"],
+      "summary": "Bước production tiếp theo là QueryPlan v1 tất định trên public API trước khi tích hợp model offline; schema/helper trong hồ sơ thảo luận chưa phải executor đã chạy."
+    },
+    {
+      "id": "gemini-evidence-and-manual-transfer",
+      "touches": ["ai_collaboration/*"],
+      "read": ["ai_collaboration/README.md", "ai_collaboration/AGENTS.md"],
+      "summary": "Kiểm chứng độc lập đề xuất bằng current source/test; giữ nguyên phản hồi cũ và ghi dirty state/fingerprint trong gói mới. Chuyển Gemini hiện qua file; packet không chứa dữ liệu BTC hoặc bí mật."
+    }
+  ]
+}

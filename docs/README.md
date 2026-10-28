@@ -1,0 +1,18 @@
+# Bản đồ tài liệu
+
+Đọc [PROGRESS](PROGRESS.md) để tiếp tục công việc, rồi chọn đúng nhánh dưới đây. Source hiện tại và kết quả chạy mới là căn cứ; hồ sơ cũ có thể mô tả tính năng chưa áp dụng.
+
+| Công việc | Đọc trước | Lệnh lấy ngữ cảnh |
+|---|---|---|
+| Làm quen repo | [README](../README.md), [kiến trúc](architecture.md) | `python scripts/harness.py map` |
+| Sửa loader | [hướng dẫn loader](../loader/AGENTS.md), phần liên quan của [schema/design](../surveys/DESIGN.md) | `python scripts/harness.py context loader/build.py` |
+| Nghiệp vụ/thời gian | [API](business.md), [hướng dẫn business](../business/AGENTS.md) | `python scripts/harness.py context business/sales.py` |
+| Bộ chấm | [hướng dẫn evaluator](../evaluate/AGENTS.md) | `python scripts/harness.py context evaluate/evaluate.py` |
+| Kiểm chứng | [bằng chứng và giới hạn](validation.md), [harness](harness-engineering.md) | `python scripts/harness.py check` |
+| QueryPlan/NLU tiếp theo | [PROGRESS](PROGRESS.md), [quyết định](../ai_collaboration/DECISIONS.md) | Đọc public API trước; executor chưa có |
+| Gemini/LLM review | [workflow](../ai_collaboration/README.md), [hướng dẫn](../ai_collaboration/AGENTS.md) | Mở đúng vòng/lượt cần kiểm chứng |
+| Tác vụ qua nhiều phiên | [mẫu task](tasks/TEMPLATE.md) hoặc kế hoạch đang làm | Giữ acceptance, evidence, next action trong cùng hồ sơ |
+
+[Chỉ mục ngữ cảnh theo file](context-index.json) trỏ tới quyết định và bằng chứng có liên quan; lệnh `context` tự chọn các mục phù hợp. Không đọc toàn bộ GEMINI_HANDOFF hoặc rounds để bắt đầu mọi tác vụ.
+
+Tài liệu `superpowers/specs/` và `superpowers/plans/` ghi thiết kế/kế hoạch theo ngày. Chỉ dùng kế hoạch đúng tác vụ, kiểm tra trạng thái thực thi trước khi tiếp tục. Không coi mọi checkbox cũ là việc cần làm lại.

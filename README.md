@@ -26,6 +26,10 @@ pip install -r requirements.txt
 
 ## Cách chạy (từ thư mục gốc)
 
+Làm việc với AI coding agent: bắt đầu tại [AGENTS.md](AGENTS.md), [bản đồ tài liệu](docs/README.md) và [hướng dẫn Harness Engineering](docs/harness-engineering.md). Bản triển khai tham khảo OpenAI/Anthropic và Trail-Code: ngữ cảnh theo file, import impact từ code hiện tại, kiểm tra tự động và bàn giao có bằng chứng.
+
+Trên Windows chưa activate venv, thay `python` bằng `.\.venv\Scripts\python.exe`.
+
 | Lệnh | Việc làm |
 |---|---|
 | `python evaluate/evaluate.py --pred submission.jsonl --gold train/answers.jsonl --questions train/questions.jsonl` | Chấm submission theo luật BTC, ghi `errors.jsonl` |
@@ -35,6 +39,11 @@ pip install -r requirements.txt
 | `python generalize_check.py` | Leave-one-group-out + tiệm mẫu file mới → `generalize_report.md` (~3 phút) |
 | `python verify_business.py` | Kiểm chứng thư viện nghiệp vụ trên tập câu train được bộ kiểm tra cũ chọn → `reports/business_verification.*` |
 | `pytest tests/ evaluate/` | Unit test |
+| `python scripts/harness.py doctor` | Kiểm tra môi trường và dữ liệu local tùy chọn |
+| `python scripts/harness.py map` | Bản đồ import Python hiện tại, không cần model/cache |
+| `python scripts/harness.py context business/sales.py` | API, module phụ thuộc và quyết định liên quan trước khi sửa file |
+| `python scripts/harness.py check` | Guard + test tổng hợp, giống CI, không cần dữ liệu BTC |
+| `python scripts/harness.py check --profile data` | Thêm test cần dữ liệu và hồi quy gold tập chọn lọc trên local |
 
 ## Cấu trúc thư mục
 
@@ -68,7 +77,7 @@ Hàm chính: `from loader import load_business; res = load_business("train/data/
 
 Trao đổi với Gemini web hoặc LLM khác: xem [ai_collaboration/README.md](ai_collaboration/README.md). Gói bàn giao có bối cảnh, source snapshot, yêu cầu thảo luận và chỗ lưu phản hồi để Codex kiểm chứng.
 
-Kiểm chứng code mới nhất ngày 2026-10-29: **258 test đạt, 1 test cũ bỏ qua**; thư viện nghiệp vụ khớp gold **409/409 câu đối chiếu được**, 0 lỗi, trên tập chọn lọc. Bộ 409 chạm 3/10 API, chưa phải PA toàn bộ train hoặc kết quả của tầng NLU. Xem [phạm vi và bằng chứng](docs/validation.md).
+Kiểm chứng harness ngày 2026-10-29: toàn bộ suite **302 test đạt, 1 test cũ bỏ qua**; full profile dùng cho CI chạy local **301 đạt, 2 ca cần dữ liệu bị loại**. Lượt verifier mới khớp gold **409/409 câu đối chiếu được**, 0 lỗi, trên tập chọn lọc. Bộ 409 chạm 3/10 API, chưa phải PA toàn bộ train hoặc kết quả của tầng NLU. Xem [phạm vi và bằng chứng](docs/validation.md).
 
 | Bước | Nội dung | Trạng thái |
 |---|---|---|

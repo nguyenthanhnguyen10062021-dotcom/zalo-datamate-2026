@@ -159,6 +159,7 @@ def test_line_kind(raw, expected):
 
 # --- ràng buộc: quy tắc mô tả chỉ được rút ra từ README TRAIN ----------------------------------------
 
+@pytest.mark.local_data
 def test_every_desc_rule_seen_in_train_readmes():
     descs = []
     for p in sorted((ROOT / "train" / "data").glob("*/README.md")):

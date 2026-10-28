@@ -74,6 +74,7 @@ def test_self_score_sample(tmp_path):
     assert res["score"] == 1.0
 
 
+@pytest.mark.local_data
 def test_self_score_real_file(tmp_path):
     path = _find_gold_file()
     if path is None:

@@ -2,6 +2,19 @@
 
 Ngày theo Asia/Saigon. Nhánh làm việc: `VuongNguyen`.
 
+## Cập nhật Harness Engineering — 2026-10-29
+
+Theo yêu cầu người dùng, đã thêm harness phát triển tham khảo OpenAI/Anthropic và Trail-Code trên nền `d3ae67b`. Hồ sơ kiểm chứng được ghi trước khi commit harness; người dùng đã yêu cầu commit và đẩy lên nhánh `VuongNguyen`. Source nghiệp vụ, loader và evaluator không thay đổi; hai test cần dữ liệu được gắn marker local_data.
+
+- Điểm vào agent: [AGENTS](../AGENTS.md), [bản đồ tài liệu](README.md), [kiến trúc](architecture.md) và hướng dẫn theo module.
+- `python scripts/harness.py map` và `context <file.py>` lấy API/import impact từ working tree hiện tại, kèm quyết định qua [context-index](context-index.json). Có tính dependency của package initializer; graph tĩnh vẫn có giới hạn với dynamic/data dependencies.
+- `doctor`, `check --profile fast|full|data` và [CI Windows/Ubuntu](../.github/workflows/ci.yml). [Hướng dẫn và nghiên cứu](harness-engineering.md) ghi nguồn Trail theo revision, cơ chế đã áp dụng và giới hạn.
+- Kiểm chứng mới: harness **44 passed**; full **301 passed, 2 local_data deselected**; toàn bộ `python -m pytest -q -rs` **302 passed, 1 skip cũ**. Checkout tạm không có train/public_test/cache/venv cũng full 301 passed; data profile từ chối rõ khi thiếu input.
+- Review độc lập đã tái hiện và sửa guard bỏ sót báo cáo bị force-track; đã có regression test. CI hosted chưa được xác nhận trong hồ sơ kiểm chứng local này; xem GitHub Actions của commit sau khi push. Không cài Trail/package/hook toàn máy.
+- Đối chiếu gold mới qua data profile: **409/409 khớp gold và legacy, 0 lỗi**, chọn 417/3000, legacy skip 8. Local-data tests: 1 passed, 1 skip helper cũ. Báo cáo local: `reports/harness/business_verification.json` và `.md`; không rebuild loader/cache vì code loader không đổi.
+
+Hồ sơ triển khai: [plan và execution record](superpowers/plans/2026-10-29-harness-engineering.md). Bước sản phẩm kế tiếp vẫn là QueryPlan executor v1 bên dưới; bắt đầu phiên mới bằng AGENTS và context cho file cần sửa.
+
 ## Đang ở bước nào
 
 Đã có loader và thư viện tính toán nghiệp vụ bán hàng. Bản sửa sau bốn lượt phản biện Gemini đã vào code chính và được kiểm chứng. Bước tiếp theo là dựng bộ thực thi QueryPlan v1 tất định; chưa có pipeline hoàn chỉnh từ câu hỏi tiếng Việt đến đáp án.
