@@ -119,7 +119,7 @@ def process(shop_dir: str, split: str, split_root: str, cache_root: str) -> dict
         return {"split": split, "business_id": shop_dir.name, "crash": f"{type(e).__name__}: {e}",
                 "traceback": traceback.format_exc(), "thoi_gian": round(time.time() - t0, 1)}
     cache.mkdir(parents=True, exist_ok=True)
-    for name in ("don_hang", "dong_hang", "mat_hang", "quy_doi_don_vi", "khach_hang"):
+    for name in ("don_hang", "dong_hang", "mat_hang", "quy_doi_don_vi", "khach_hang", "thuoc", "bang_gia"):
         to_parquet(res[name], cache / f"{name}.parquet")
     (cache / "cua_hang.json").write_text(json.dumps(res["cua_hang"], ensure_ascii=False, indent=1, default=json_value),
                                          encoding="utf-8")

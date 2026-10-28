@@ -489,6 +489,43 @@ class ProductIndex:
         return next(iter(s)) if s and len(s) == 1 else None
 
 
+PRICE_CONCEPTS = {"ma_hang", "ten_hang", "ten", "ngay_ap_dung", "gia_moi", "gia_cu", "don_gia"}
+
+
+def build_price_list(tms: list[TableMap], idx: ProductIndex) -> pd.DataFrame:
+    """bang_gia (ma_hang, ngay_ap_dung, gia): giá bán một đơn vị cơ bản áp dụng từ ngay_ap_dung (bảng vai trò `price`).
+    Giá = cột 'giá mới' (hoặc 'đơn giá' của lịch sử giá). Dòng thiếu mã hàng/ngày/giá bị bỏ; trùng thì giữ một dòng."""
+    rows = []
+    for tm in [x for x in tms if x.role == "price"]:
+        df = _frame(tm, PRICE_CONCEPTS)
+        if "ngay_ap_dung" not in df:
+            continue
+        price = df["gia_moi"] if "gia_moi" in df else df.get("don_gia")
+        if price is None:
+            continue
+        names = df["ten_hang"] if "ten_hang" in df else df.get("ten")
+        for i in df.index:
+            code = df.at[i, "ma_hang"] if "ma_hang" in df else None
+            if code is None and names is not None and names.at[i] is not None:
+                code = idx.find(names.at[i])
+            rows.append({"ma_hang": code, "ngay_ap_dung": df.at[i, "ngay_ap_dung"], "gia": price.at[i]})
+    out = pd.DataFrame(rows, columns=["ma_hang", "ngay_ap_dung", "gia"])
+    out["ngay_ap_dung"] = pd.to_datetime(out["ngay_ap_dung"], errors="coerce").dt.normalize()
+    out["gia"] = pd.to_numeric(out["gia"], errors="coerce")
+    out = out.dropna(subset=["ma_hang", "ngay_ap_dung", "gia"]).drop_duplicates()
+    return out.sort_values(["ma_hang", "ngay_ap_dung"], kind="stable").reset_index(drop=True)
+
+
+def build_thuoc(mat_hang: pd.DataFrame) -> pd.DataFrame:
+    """thuoc (ma_hang, hoat_chat, ke_don): các mặt hàng có ghi hoạt chất hoặc cờ kê đơn trong danh mục thuốc."""
+    cols = ["ma_hang", "hoat_chat", "ke_don"]
+    if not len(mat_hang):
+        return pd.DataFrame(columns=cols)
+    t = mat_hang[cols].copy()
+    t["hoat_chat"] = t["hoat_chat"].map(clean_str)
+    return t[t["hoat_chat"].notna() | t["ke_don"].notna()].reset_index(drop=True)
+
+
 def _ke_don(v):
     if v is None or (isinstance(v, float) and np.isnan(v)) or v is pd.NA:
         return None
@@ -967,6 +1004,7 @@ def _capabilities(orders, lines, mat_hang, quy_doi, tms, info) -> dict:
         "gia_nhap": bool(allc & {"gia_nhap", "thanh_tien_nhap", "tong_tien_phieu_nhap"}),
         "ton_kho": roles["inventory"] > 0, "lo_hang": bool(allc & {"ma_lo", "han_su_dung"}),
         "giao_hang": roles["delivery"] > 0, "han_no": roles["debt_term"] > 0, "bang_gia": roles["price"] > 0,
+        "thuoc": has(mat_hang, "hoat_chat") or has(mat_hang, "ke_don"),
         "danh_sach_khach": roles["customer"] > 0, "dia_chi_khach": "dia_chi" in allc,
     }
 
@@ -1002,6 +1040,8 @@ def load_business(business_dir: str | Path, rulebook_path: str | Path | None = N
     don_hang = _select(orders, DON_HANG_COLS, {"con_no": "con_no_cuoi_du_lieu"})
     dong_hang = _select(lines, DONG_HANG_COLS)
     mat_hang = _select(mat_hang, MAT_HANG_COLS)
+    thuoc = build_thuoc(mat_hang)
+    bang_gia = build_price_list(tms, idx)
 
     nd = pd.to_datetime(don_hang["ngay_dat"], errors="coerce")
     cua_hang = {
@@ -1026,7 +1066,7 @@ def load_business(business_dir: str | Path, rulebook_path: str | Path | None = N
 
     result = {
         "cua_hang": cua_hang, "don_hang": don_hang, "dong_hang": dong_hang, "mat_hang": mat_hang,
-        "khach_hang": khach_hang,
+        "khach_hang": khach_hang, "thuoc": thuoc, "bang_gia": bang_gia,
         "quy_doi_don_vi": quy_doi.reset_index(drop=True), "raw_tables": tables, "table_maps": tms,
         "readme": readme, "errors": errors,
     }
