@@ -1,0 +1,130 @@
+"""API mở rộng của business/ trên dữ liệu và rulebook TỔNG HỢP (không dùng file BTC)."""
+import pandas as pd
+import pytest
+
+from business import DateRange, Rulebook, UnsupportedRule
+from business.sales import DataError, Filters, SalesMetrics
+from conftest import RULES
+
+# Rulebook giả lập: luật chung (conftest) + các dòng các API mở rộng cần.
+EXT_RULES = RULES.replace(
+    '| Số đơn | chỉ tính đơn không huỷ, không trả |',
+    '| Số đơn | chỉ tính đơn không huỷ, không trả; cả khi đếm số đơn có một mặt hàng, số đơn của một khách. '
+    'Khách đã mua trong kỳ là khách có ít nhất một đơn như vậy |').replace(
+    '| Mặt hàng | Phí phục vụ không phải mặt hàng: không xếp hạng. Vẫn tính vào doanh thu |',
+    '| Mặt hàng | Phí phục vụ không phải mặt hàng: không xếp hạng, không đếm. Vẫn tính vào doanh thu |') + '''
+| Quá N, hơn N, trên N, dưới N | **không** gồm N. **Từ N trở lên** thì gồm N |
+| Hàng lời nhất | theo tổng lãi gộp của mặt hàng |
+| Nhân viên bán giỏi nhất | theo **doanh thu** của nhân viên trong kỳ, không theo số đơn |
+| Mặt hàng không bán được trong kỳ (ế) | mặt hàng đã từng bán trước kỳ (không tính đơn huỷ, trả) nhưng trong kỳ không có đơn nào mua |
+| Giá bán X ngày D | đơn giá trên dòng bán, cho **một đơn vị cơ bản**, **trước** chiết khấu dòng; tính cả dòng của đơn huỷ, đơn trả |
+| Lãi gộp | doanh thu trừ giá vốn. Giá vốn dòng = số lượng nhân giá vốn ghi trên dòng bán (cho một đơn vị bán). Không tự tính lại giá vốn từ phiếu nhập |
+### Cà phê
+| Luật | Mặc định |
+|---|---|
+| Size M, size L | món có tên kết thúc bằng `(M)` hoặc `(L)`, không phân biệt hoa thường |
+Câu hỏi nhiều số thì ghi list theo đúng thứ tự câu hỏi nêu. Phần trăm và số trung bình khác làm tròn 2 chữ số thập phân.
+'''
+
+# Các dòng chỉ có ở rulebook public (giả lập lại bằng lời của mình).
+PUBLIC_ONLY = '''
+| Luật | Mặc định |
+|---|---|
+| Khách trung thành nhất | khách có nhiều ngày có mua nhất trong kỳ |
+| Khách sộp nhất | khách có giá trị trung bình một đơn cao nhất, chỉ xét khách có từ 3 đơn trở lên |
+| Khách hay đổi ý nhất | khách có nhiều đơn huỷ nhất trong kỳ |
+| Mặt hàng được ưa chuộng nhất | mặt hàng có mặt trong nhiều đơn nhất trong kỳ |
+| Nhân viên, thợ chăm chỉ nhất | nhiều ngày làm việc nhất; ngày làm việc là ngày có ít nhất một đơn do người đó bán |
+| Ngày đắt khách nhất | ngày có nhiều đơn nhất trong kỳ |
+| Giờ cao điểm | khung một giờ tròn theo giờ tạo đơn có nhiều đơn nhất. Đáp án là giờ bắt đầu khung, type number |
+| Trung bình mỗi ngày thứ X của kỳ | chia cho số ngày thứ X trong kỳ, kể cả ngày không có đơn |
+'''
+
+MARCH = DateRange('2026-03-01', '2026-03-31')
+FEB = DateRange('2026-02-01', '2026-02-28')
+
+
+@pytest.fixture
+def ext_rules():
+    return Rulebook.from_text(EXT_RULES)
+
+
+@pytest.fixture
+def public_rules():
+    return Rulebook.from_text(EXT_RULES + PUBLIC_ONLY)
+
+
+@pytest.fixture
+def tables():
+    orders = pd.DataFrame([
+        # tháng 2 (trước kỳ): F2 huỷ nên P6 chưa "từng bán"
+        ['F1', '2026-02-10', '2026-02-10 09:10', 'hoan_thanh', 'K1', 'An', False, 'NV1'],
+        ['F2', '2026-02-11', '2026-02-11 10:00', 'huy', 'K2', 'Bình', False, 'NV2'],
+        # tháng 3: 02/03 và 09/03 là thứ Hai
+        ['O1', '2026-03-02', '2026-03-02 08:15', 'hoan_thanh', 'K1', 'An', False, 'NV1'],
+        ['O2', '2026-03-02', '2026-03-02 08:45', 'hoan_thanh', 'K2', 'Bình', False, 'NV2'],
+        ['O3', '2026-03-03', '2026-03-03 14:05', 'hoan_thanh', 'K1', 'An', False, 'NV2'],
+        ['O4', '2026-03-03', '2026-03-03 15:30', 'huy', 'K2', 'Bình', False, 'NV1'],
+        ['O5', '2026-03-09', '2026-03-09 08:00', 'tra_hang', 'K3', 'Chi', False, 'NV1'],
+        ['O6', '2026-03-09', '2026-03-09 09:20', 'hoan_thanh', None, 'Khách lẻ', True, 'NV1'],
+        ['O7', '2026-03-10', '2026-03-10 08:30', 'hoan_thanh', 'K1', 'An', False, 'NV1'],
+        ['O8', '2026-03-10', '2026-03-10 09:00', 'huy', 'K1', 'An', False, 'NV2'],
+    ], columns=['ma_don', 'ngay_dat', 'thoi_diem_dat', 'trang_thai', 'ma_khach', 'ten_khach', 'la_khach_le',
+                'ma_nhan_vien'])
+    orders['khach_key'] = orders['ma_khach']
+    lines = pd.DataFrame([
+        # ma_don, ma_hang, loai, so_luong, so_luong_co_ban, don_gia, thanh_tien, gia_von_dong
+        ['F1', 'P3', 'hang', 1, 1, 20000, 20000, 12000],
+        ['F1', 'P4', 'hang', 1, 1, 30000, 30000, 8000],
+        ['F2', 'P6', 'hang', 1, 1, 5000, 5000, 3000],
+        ['O1', 'P1', 'hang', 2, 2, 30000, 60000, 10000],
+        ['O1', 'P2', 'hang', 1, 1, 40000, 35000, 15000],      # chiết khấu dòng 5000
+        ['O1', 'S', 'phi_phuc_vu', 1, 1, 5000, 5000, None],
+        ['O2', 'P1', 'hang', 1, 1, 30000, 30000, 10000],
+        ['O3', 'P5', 'hang', 1, 24, 120000, 120000, 100000],  # 1 thùng = 24 chai
+        ['O4', 'P1', 'hang', 1, 1, 32000, 32000, 10000],
+        ['O5', 'P2', 'hang', 2, 2, 40000, 80000, 15000],
+        ['O6', 'P4', 'hang', 1, 1, 30000, 30000, 8000],
+        ['O7', 'P1', 'hang', 1, 1, 30000, 30000, 10000],
+        ['O8', 'P4', 'hang', 1, 1, 30000, 30000, 8000],
+    ], columns=['ma_don', 'ma_hang', 'loai_dong', 'so_luong', 'so_luong_co_ban', 'don_gia', 'thanh_tien',
+                'gia_von_dong'])
+    products = pd.DataFrame([
+        ['P1', 'Cà phê (M)', 'ly'], ['P2', 'Cà phê (l)', 'ly'], ['P3', 'Bánh', 'cái'], ['P4', 'Trà', 'ly'],
+        ['P5', 'Nước suối', 'chai'], ['P6', 'Kẹo', 'gói'], ['S', 'Phí phục vụ', None],
+    ], columns=['ma_hang', 'ten_hang', 'don_vi_co_ban'])
+    return {'don_hang': orders, 'dong_hang': lines, 'mat_hang': products,
+            'cua_hang': {'ngay_bat_dau_du_lieu': '2026-02-01', 'ngay_ket_thuc_du_lieu': '2026-03-31',
+                         'co_ma_don': True, 'co_ma_khach': True}}
+
+
+def engine(tables, rules, as_of='2026-03-31'):
+    return SalesMetrics(tables, rules, as_of)
+
+
+# C1 ------------------------------------------------------------------------------------------------
+
+def test_best_period_day_month_and_ties(tables, ext_rules):
+    e = engine(tables, ext_rules)
+    assert e.best_period(MARCH).answer == '2026-03-02'                         # 130000
+    assert e.best_period(MARCH, metric='orders').answer == '2026-03-02'        # 2 đơn
+    assert e.best_period(MARCH, kind='min').answer == '2026-03-01'             # ngày trống = 0, ngày sớm nhất
+    both = DateRange('2026-02-01', '2026-03-31')
+    assert e.best_period(both, granularity='month').answer == '2026-03'
+    assert e.best_period(both, granularity='month', kind='min').answer == '2026-02'
+    assert e.best_period(DateRange('2026-03-09', '2026-03-10')).answer == '2026-03-09'  # bằng nhau: ngày sớm hơn
+    assert e.best_period(DateRange('2025-01-01', '2025-01-31')).type == 'unanswerable'
+
+
+# C4 ------------------------------------------------------------------------------------------------
+
+def test_revenue_series_and_monotonic(tables, ext_rules):
+    e = engine(tables, ext_rules)
+    assert e.revenue_series([FEB, MARCH]).answer == [50000, 310000]
+    assert e.is_monotonic([FEB, MARCH]).answer is True
+    assert e.is_monotonic([MARCH, FEB]).answer is False
+    assert e.is_monotonic([MARCH, FEB], 'decreasing').answer is True
+    assert e.is_monotonic([FEB, FEB]).answer is False                          # bằng nhau không phải tăng
+    assert e.revenue_series([DateRange('2025-01-01', '2025-01-31'), MARCH]).type == 'unanswerable'
+
+
