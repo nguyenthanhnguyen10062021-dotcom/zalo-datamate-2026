@@ -33,6 +33,7 @@ pip install -r requirements.txt
 | `python load_all.py` | Nạp mọi tiệm về schema chuẩn → `cache/<business_id>/`, ghi `load_report.md` (~1,5 phút) |
 | `python check_with_gold.py` | Đối chiếu bảng chuẩn với đáp án train → `gold_report.md` (cần chạy `load_all.py` trước) |
 | `python generalize_check.py` | Leave-one-group-out + tiệm mẫu file mới → `generalize_report.md` (~3 phút) |
+| `python verify_business.py` | Kiểm chứng thư viện nghiệp vụ trên tập câu train được bộ kiểm tra cũ chọn → `reports/business_verification.*` |
 | `pytest tests/ evaluate/` | Unit test |
 
 ## Cấu trúc thư mục
@@ -54,17 +55,24 @@ load_all.py        nạp mọi tiệm -> cache/
 check_with_gold.py kiểm tra bằng đáp án train
 generalize_check.py kiểm tra khả năng tổng quát
 tests/             unit test parser, viết tắt, suy luận từ giá trị
+business/          API nghiệp vụ bán hàng, rulebook và thời gian
+verify_business.py kiểm chứng thư viện nghiệp vụ trên tập câu chọn lọc
+ai_collaboration/  gói bàn giao và các vòng thảo luận với Gemini web
 ```
 
 Hàm chính: `from loader import load_business; res = load_business("train/data/biz_101", "train/rulebook.md")`.
 
 ## Tiến độ
 
+Trao đổi với Gemini web hoặc LLM khác: xem [ai_collaboration/README.md](ai_collaboration/README.md). Gói bàn giao có bối cảnh, source snapshot, yêu cầu thảo luận và chỗ lưu phản hồi để Codex kiểm chứng.
+
+Kiểm chứng mới nhất ngày 2026-10-28: **219 test đạt, 1 test cũ bỏ qua**; thư viện nghiệp vụ khớp gold **409/409 câu đối chiếu được** trên tập chọn lọc, chưa phải PA toàn bộ train. Xem [phạm vi và bằng chứng](docs/validation.md).
+
 | Bước | Nội dung | Trạng thái |
 |---|---|---|
 | 1 | `evaluate.py`: chấm điểm theo luật BTC | ✅ |
 | 2 | Loader về schema chuẩn (v0 + 2c: viết tắt, suy từ giá trị) | ✅ 409/409 câu khớp đáp án train (263 doanh thu/huỷ + 146 số lượng/ca) |
-| 3 | Thư viện hàm nghiệp vụ theo rulebook trên schema chuẩn | ⏭ tiếp theo |
+| 3 | Thư viện hàm nghiệp vụ theo rulebook trên schema chuẩn | Bản đầu: thời gian/lịch Tết, doanh thu, số đơn, số lượng, tỷ lệ, xếp hạng; xem [API và giới hạn](docs/business.md) |
 | 4 | LLM (hiểu câu hỏi, sinh mapping cho mẫu file lạ) | |
 | 5 | Dự phòng + chiến lược abstain | |
 | 6 | Đóng gói Docker | |
