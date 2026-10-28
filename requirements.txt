@@ -1,0 +1,6 @@
+# Version đã chạy thử (Python 3.14). evaluate/evaluate.py chỉ cần thư viện chuẩn.
+pandas==3.1.0
+numpy==2.5.4
+openpyxl==3.1.5
+pyarrow==26.0.0     # pandas đọc/ghi parquet (cache/)
+pytest==9.2.0

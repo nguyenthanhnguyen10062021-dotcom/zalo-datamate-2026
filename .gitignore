@@ -1,0 +1,34 @@
+# dữ liệu BTC (không được đẩy lên)
+train/
+public_test/
+data/
+*.zip
+*.xlsx
+*.xls
+*.csv
+*.sqlite
+
+# file sinh ra khi chạy
+cache/
+reports/
+errors.jsonl
+submission*.jsonl
+abstain.jsonl
+*.parquet
+load_report.md
+gold_report.md
+generalize_report.md
+
+# ĐỀ XUẤT (chờ xác nhận): survey_raw.md chứa trích đoạn dữ liệu BTC (README + 10 dòng đầu mỗi file);
+# tái tạo bằng: python surveys/survey.py --out surveys/survey_raw.md
+surveys/survey_raw.md
+
+# python / mac / env
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.DS_Store
+.env
+.env.*
