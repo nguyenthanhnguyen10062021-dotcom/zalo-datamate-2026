@@ -167,6 +167,29 @@ def test_revenue_series_and_monotonic(tables, ext_rules):
     assert e.revenue_series([DateRange('2025-01-01', '2025-01-31'), MARCH]).type == 'unanswerable'
 
 
+# C6 ------------------------------------------------------------------------------------------------
+
+def test_slow_moving_products(tables, ext_rules):
+    e = engine(tables, ext_rules)
+    assert e.slow_moving_products(MARCH).answer == 1                          # P3; P6 chỉ bán ở đơn huỷ
+    assert e.slow_moving_products(MARCH, as_list=True).answer == ['Bánh']
+    assert e.slow_moving_products(FEB).type == 'unanswerable'                 # không có dữ liệu trước kỳ
+
+
+# C7 ------------------------------------------------------------------------------------------------
+
+def test_gross_profit(tables, ext_rules):
+    e = engine(tables, ext_rules)
+    assert e.gross_profit(MARCH).answer == 147000          # 310000 − 163000; phí phục vụ không có giá vốn
+    assert e.top_products(MARCH, k=4, metric='gross_profit').answer == ['Cà phê (M)', 'Trà', 'Cà phê (l)', 'Nước suối']
+    tables['dong_hang'].loc[0, 'gia_von_dong'] = None
+    tables['dong_hang'].loc[3, 'gia_von_dong'] = None
+    with pytest.raises(DataError):
+        engine(tables, ext_rules).gross_profit(MARCH)
+    tables['dong_hang'] = tables['dong_hang'].drop(columns='gia_von_dong')
+    assert engine(tables, ext_rules).gross_profit(MARCH).type == 'unanswerable'
+
+
 # C9 ------------------------------------------------------------------------------------------------
 
 def test_top_staff_by_revenue(tables, ext_rules):
