@@ -66,7 +66,7 @@ Hàm chính: `from loader import load_business; res = load_business("train/data/
 
 Trao đổi với Gemini web hoặc LLM khác: xem [ai_collaboration/README.md](ai_collaboration/README.md). Gói bàn giao có bối cảnh, source snapshot, yêu cầu thảo luận và chỗ lưu phản hồi để Codex kiểm chứng.
 
-Kiểm chứng mới nhất ngày 2026-10-29: **245 test đạt**; thư viện nghiệp vụ phủ **863/3000 câu train** (bộ chọn regex trong verifier), khớp gold **844**. Đây là tập chọn lọc, chưa phải PA toàn bộ train. Xem [phạm vi và bằng chứng](docs/validation.md).
+Kiểm chứng mới nhất ngày 2026-10-29: **255 test đạt**; thư viện nghiệp vụ phủ **863/3000 câu train** (bộ chọn regex trong verifier), khớp gold **855**. Đây là tập chọn lọc, chưa phải PA toàn bộ train. Xem [phạm vi và bằng chứng](docs/validation.md).
 
 | Bước | Nội dung | Trạng thái |
 |---|---|---|
