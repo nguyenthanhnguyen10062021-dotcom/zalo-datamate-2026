@@ -23,11 +23,16 @@ SERIAL_MIN, SERIAL_MAX = 20000, 80000  # serial Excel hợp lý: 1954..2119
 # Chuỗi
 # ---------------------------------------------------------------------------
 
+def is_null(v) -> bool:
+    """Ô rỗng thật: None, NaN, pd.NA, NaT (không coi chuỗi 'nan'/'<NA>' là rỗng ở đây)."""
+    if v is None or type(v).__name__ in ("NAType", "NaTType"):
+        return True
+    return isinstance(v, float) and math.isnan(v)
+
+
 def clean_str(v) -> str | None:
     """NFC + strip + gộp khoảng trắng; ô rỗng / ô lỗi Excel -> None."""
-    if v is None or type(v).__name__ in ("NAType", "NaTType"):
-        return None
-    if isinstance(v, float) and math.isnan(v):
+    if is_null(v):
         return None
     s = unicodedata.normalize("NFC", str(v)).replace(" ", " ").strip()
     s = re.sub(r"\s+", " ", s)
