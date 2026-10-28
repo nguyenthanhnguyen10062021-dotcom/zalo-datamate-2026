@@ -4,13 +4,14 @@ from decimal import Decimal, ROUND_HALF_UP
 from functools import wraps
 import json
 from pathlib import Path
+import re
 import unicodedata
 
 import numpy as np
 import pandas as pd
 
 from .periods import DateRange, as_date
-from .rules import Rulebook
+from .rules import Rulebook, UnsupportedRule, folded
 
 
 class DataError(ValueError):
@@ -35,6 +36,14 @@ class Answer:
             result['reason'] = self.reason
         return result
 
+    def single(self):
+        """Câu hỏi một đối tượng (§9): phần tử đầu của list xếp hạng, type string."""
+        if self.type != 'list':
+            return self
+        if not self.answer:
+            return Answer('unanswerable', reason=self.reason or 'Không có đối tượng')
+        return Answer('string', self.answer[0], self.reason)
+
 
 @dataclass(frozen=True)
 class Filters:
@@ -44,6 +53,11 @@ class Filters:
     payment: str | None = None
     customer_group: str | None = None
     shift: str | None = None
+    size: str | None = None      # 'M'/'L': tên món kết thúc '(M)'/'(L)' (luật ngành cà phê)
+    staff: str | None = None     # mã nhân viên ghi trên đơn
+
+    def by_product(self):
+        return self.product_ids is not None or self.product_group is not None or self.size is not None
 
 
 def _answer(method):
@@ -142,6 +156,13 @@ class SalesMetrics:
                     raise DataError('Một số khách đã định danh thiếu nhóm khách')
                 mask &= ~walkins
             selected = selected[mask]
+        if filters.staff is not None:
+            staff = self._column(self.orders,'ma_nhan_vien')
+            if selected['ma_nhan_vien'].isna().any():
+                raise DataError('Một số đơn thiếu nhân viên')
+            if filters.staff not in set(staff.dropna()):
+                raise _Unavailable('Không có mã nhân viên trong dữ liệu')
+            selected = selected[selected['ma_nhan_vien'].eq(filters.staff)]
         if filters.shift is not None:
             start_min,end_min = self.rules.shift_minutes(filters.shift)
             self._column(self.orders,'thoi_diem_dat')
@@ -179,6 +200,16 @@ class SalesMetrics:
             if (mapped.isna() & merchandise).any():
                 raise DataError('Một số mặt hàng thiếu nhóm hàng')
             lines = lines[mapped.eq(filters.product_group).fillna(False)]
+        if filters.size is not None:
+            rule = self.rules.require('Size M, size L','ten ket thuc bang','khong phan biet hoa thuong')
+            suffix = f'({filters.size})'
+            if folded(suffix) not in folded(rule):
+                raise UnsupportedRule(f'Rulebook không định nghĩa size {filters.size!r}')
+            names = lines['ma_hang'].map(self.products.set_index('ma_hang')['ten_hang'])
+            if names.isna().any():
+                raise DataError('Một số dòng hàng thiếu tên món')
+            suffix = ''.join(suffix.split()).casefold()
+            lines = lines[names.map(lambda n: ''.join(str(n).split()).casefold().endswith(suffix))]
         return lines
 
     def _revenue_rule(self):
@@ -192,7 +223,7 @@ class SalesMetrics:
         if len(self.lines):
             self._column(self.lines,'thanh_tien')
             return _sum(self._line_sales(orders,filters),'thanh_tien')
-        if filters.product_ids is not None or filters.product_group is not None:
+        if filters.by_product():
             raise _Unavailable('Không có dòng hàng để lọc sản phẩm')
         self._column(self.orders,'tong_tien_hang')
         return _sum(orders,'tong_tien_hang')
@@ -205,7 +236,7 @@ class SalesMetrics:
         if cancelled:
             self.rules.require('Đơn bị huỷ','trang thai huy','khong phai don huy')
             orders = orders[orders['trang_thai']=='huy']
-        if filters.product_ids is not None or filters.product_group is not None:
+        if filters.by_product():
             lines = self._line_sales(orders,filters,True)
             orders = orders[orders['ma_don'].isin(lines['ma_don'])]
         return len(orders)
@@ -343,3 +374,70 @@ class SalesMetrics:
         if denominator == 0:
             raise _Unavailable('Tổng doanh thu bằng 0, không tính được tỷ trọng')
         return Answer('percent',_number(numerator/denominator*100,self.rules.rounding_places('percent')))
+    # ---- Mở rộng: kỳ tốt nhất, chuỗi kỳ, giá bán, hàng ế, lãi gộp, đếm khách/mặt hàng, nhân viên ----
+
+    def _need_order_ids(self):
+        if not self.meta.get('co_ma_don'):
+            raise _Unavailable('Sổ không ghi mã đơn, không xác định được số đơn')
+
+    def _product_names(self):
+        return self.products.set_index('ma_hang')['ten_hang'].to_dict()
+
+    def _order_revenue(self, orders, filters):
+        """Doanh thu §1 của từng đơn (float, theo index của orders); đơn không có dòng được lọc là 0."""
+        self._revenue_rule()
+        if len(self.lines):
+            self._column(self.lines,'thanh_tien')
+            lines = self._line_sales(orders,filters)
+            amounts = _values(lines,'thanh_tien').groupby(lines['ma_don']).sum()
+            return orders['ma_don'].map(amounts).fillna(0.0).astype(float)
+        if filters.by_product():
+            raise _Unavailable('Không có dòng hàng để lọc sản phẩm')
+        self._column(self.orders,'tong_tien_hang')
+        return _values(orders,'tong_tien_hang').astype(float)
+
+    @_answer
+    def best_period(self, period: DateRange, granularity: str = 'day', metric: str = 'revenue',
+                    kind: str = 'max', filters: Filters = Filters()):
+        """Ngày/tháng có doanh thu hoặc số đơn cao (thấp) nhất. Ngày không có đơn trong khoảng dữ liệu = 0."""
+        if granularity not in ('day','month') or metric not in ('revenue','orders') or kind not in ('max','min'):
+            raise ValueError('granularity day|month, metric revenue|orders, kind max|min')
+        self._ranking_rules()
+        start, end = self._range(period)
+        orders = self._orders(period,filters,True)
+        if metric == 'revenue':
+            values = self._order_revenue(orders,filters)
+        else:
+            self._need_order_ids()
+            self.rules.require('Số đơn','khong huy','khong tra')
+            if filters.by_product():
+                orders = orders[orders['ma_don'].isin(self._line_sales(orders,filters,True)['ma_don'])]
+            values = pd.Series(1.0,index=orders.index)
+        fmt = '%Y-%m-%d' if granularity == 'day' else '%Y-%m'
+        keys = self._dates.loc[orders.index].dt.strftime(fmt)
+        totals = {day.strftime(fmt):0.0 for day in pd.date_range(start,end,freq='D')}
+        for key, value in values.groupby(keys).sum().items():
+            totals[key] = round(float(value),6)
+        if not any(totals.values()):
+            raise _Unavailable('Không có doanh thu/đơn hợp lệ trong kỳ')
+        sign = -1 if kind == 'max' else 1
+        return Answer('date', min(totals, key=lambda key: (sign*totals[key], key)))
+
+    @_answer
+    def revenue_series(self, periods: list, filters: Filters = Filters()):
+        """Doanh thu từng kỳ theo đúng thứ tự truyền vào (list số)."""
+        if not periods:
+            raise ValueError('periods must not be empty')
+        self.rules.require_text('list theo dung thu tu cau hoi neu')
+        places = self.rules.rounding_places('money')
+        return Answer('list',[_number(self._revenue(p,filters),places) for p in periods])
+
+    @_answer
+    def is_monotonic(self, periods: list, direction: str = 'increasing', filters: Filters = Filters()):
+        """Doanh thu tăng (giảm) liên tục: mỗi kỳ lớn hơn (nhỏ hơn) hẳn kỳ liền trước."""
+        if direction not in ('increasing','decreasing') or len(periods) < 2:
+            raise ValueError('direction increasing|decreasing and at least two periods')
+        values = [self._revenue(p,filters) for p in periods]
+        pairs = list(zip(values,values[1:]))
+        ok = all(b > a for a,b in pairs) if direction == 'increasing' else all(b < a for a,b in pairs)
+        return Answer('boolean',ok)
