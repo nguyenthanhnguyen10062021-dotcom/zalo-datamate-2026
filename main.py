@@ -30,7 +30,7 @@ def load_shop(shop_dir: str, rulebook: str, train_dir: str, cache_dir: str) -> t
     try:
         res = load_business(shop_dir, rulebook, train_dir=train_dir)
         out.mkdir(parents=True, exist_ok=True)
-        for name in ("don_hang", "dong_hang", "mat_hang", "quy_doi_don_vi", "khach_hang"):
+        for name in ("don_hang", "dong_hang", "mat_hang", "quy_doi_don_vi", "khach_hang", "thuoc", "bang_gia"):
             to_parquet(res[name], out / f"{name}.parquet")
         (out / "cua_hang.json").write_text(json.dumps(res["cua_hang"], ensure_ascii=False, default=json_value),
                                           encoding="utf-8")

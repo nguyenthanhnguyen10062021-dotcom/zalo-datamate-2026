@@ -77,6 +77,23 @@ Số đơn có một mặt hàng (C8) và doanh thu/số lượng của một m�
 
 Với điều kiện số đơn, tầng hiểu câu hỏi đổi cách nói theo §2: "từ N trở lên", "ít nhất N", "≥ N" → `min_orders=N`; "quá/hơn/trên N" → `min_orders=N+1`; "dưới N" → `max_orders=N-1`.
 
+### Nhà thuốc (§6) và hiệu ứng tăng giá (§5)
+
+Loader có thêm hai bảng chuẩn (tuỳ chọn, nạp vào `SalesMetrics` nếu có file):
+`thuoc(ma_hang, hoat_chat, ke_don)` lấy từ danh mục thuốc, `bang_gia(ma_hang, ngay_ap_dung, gia)` lấy từ bảng/lịch sử giá. Hoạt chất giữ nguyên chuỗi của danh mục.
+
+| API | Kết quả | Luật |
+|---|---|---|
+| `revenue/quantity/...(period, Filters(prescription=True\|False))` | thuốc kê đơn / mọi sản phẩm còn lại | Thuốc kê đơn |
+| `prescription_share(period, prescription=True)` | percent: doanh thu phần lọc / doanh thu cả shop | Thuốc kê đơn ("tỉ lệ kê đơn tính theo doanh thu") |
+| `revenue/...(period, Filters(active_ingredient='...'))` | doanh thu thuốc có hoạt chất ghi **đúng** như vậy; thuốc phối hợp là loại riêng | Doanh thu theo hoạt chất |
+| `price_increase_effect(product_id, day, n)` | percent: số lượng cơ bản N ngày từ D (gồm D) so với N ngày ngay trước D, bỏ đơn huỷ/trả | Hiệu ứng tăng giá |
+
+- Không có danh mục thuốc, hoặc danh mục không ghi cờ kê đơn / hoạt chất: unanswerable. Hoạt chất không có trong danh mục: unanswerable.
+- `price_increase_effect`: mặt hàng có trong `bang_gia` thì D phải là lần tăng (giá mới > giá liền trước; tăng lên cùng một giá nhiều lần chỉ tính lần đầu), không thì `DataError`. Số lượng N ngày trước D bằng 0: unanswerable.
+- **CHƯA CHẮC:** tiệm không có bảng giá thì tin ngày D do câu hỏi nêu (không kiểm chứng được D là lần tăng). Train có 84 câu tăng giá nhưng chỉ vài tiệm có bảng giá.
+- **Hạn chế loader:** tiệm biz_123 ghi hoạt chất ở cột `ThanhPhanChinh` mà README không gọi tên đó là "hoạt chất", nên cột để unmapped; các câu hoạt chất của tiệm đó chưa trả lời được.
+
 ### Luật chỉ có trong rulebook public
 
 Mỗi API đòi đúng dòng luật bằng `Rulebook.require`. Chạy với rulebook train sẽ ra `UnsupportedRule`. Không có đáp án gold nên **chỉ kiểm bằng test tổng hợp**.

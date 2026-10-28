@@ -1,5 +1,6 @@
 """Sales operations on canonical loader tables, without questions or gold data."""
 from dataclasses import dataclass, replace
+from datetime import timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from functools import wraps
 import json
@@ -58,9 +59,12 @@ class Filters:
     shift: str | None = None
     size: str | None = None      # 'M'/'L': tên món kết thúc '(M)'/'(L)' (luật ngành cà phê)
     staff: str | None = None     # mã nhân viên ghi trên đơn
+    prescription: bool | None = None       # True: thuốc kê đơn; False: mọi sản phẩm còn lại (§6 Nhà thuốc)
+    active_ingredient: str | None = None   # hoạt chất ghi đúng như trong danh mục thuốc (§6 Nhà thuốc)
 
     def by_product(self):
-        return self.product_ids is not None or self.product_group is not None or self.size is not None
+        return (self.product_ids is not None or self.product_group is not None or self.size is not None
+                or self.prescription is not None or self.active_ingredient is not None)
 
 
 def _answer(method):
@@ -110,6 +114,8 @@ class SalesMetrics:
         self.lines = tables['dong_hang']
         self.products = tables['mat_hang']
         self.meta = tables['cua_hang']
+        self.thuoc = tables.get('thuoc')          # thuoc(ma_hang, hoat_chat, ke_don), tuỳ chọn
+        self.price_list = tables.get('bang_gia')  # bang_gia(ma_hang, ngay_ap_dung, gia), tuỳ chọn
         for frame, key in ((self.orders,'ma_don'), (self.products,'ma_hang')):
             if key not in frame or frame[key].isna().any() or frame[key].duplicated().any():
                 raise DataError(f'Khóa {key} thiếu/trùng trong bảng chuẩn')
@@ -123,6 +129,9 @@ class SalesMetrics:
     def from_cache(cls, cache_dir: str | Path, rulebook_path: str | Path, as_of_date):
         cache = Path(cache_dir)
         tables = {name: pd.read_parquet(cache/f'{name}.parquet') for name in ('don_hang','dong_hang','mat_hang')}
+        for name in ('thuoc','bang_gia'):
+            if (cache/f'{name}.parquet').exists():
+                tables[name] = pd.read_parquet(cache/f'{name}.parquet')
         tables['cua_hang'] = json.loads((cache/'cua_hang.json').read_text(encoding='utf-8'))
         return cls(tables, Rulebook.from_path(rulebook_path), as_of_date)
 
@@ -212,6 +221,8 @@ class SalesMetrics:
             if (mapped.isna() & merchandise).any():
                 raise DataError('Một số mặt hàng thiếu nhóm hàng')
             lines = lines[mapped.eq(filters.product_group).fillna(False)]
+        if filters.prescription is not None or filters.active_ingredient is not None:
+            lines = self._drug_lines(lines, filters)
         if filters.size is not None:
             rule = self.rules.require('Size M, size L','ten ket thuc bang','khong phan biet hoa thuong')
             suffix = f'({filters.size})'
@@ -222,6 +233,33 @@ class SalesMetrics:
                 raise DataError('Một số dòng hàng thiếu tên món')
             suffix = ''.join(suffix.split()).casefold()
             lines = lines[names.map(lambda n: ''.join(str(n).split()).casefold().endswith(suffix))]
+        return lines
+
+    def _drug_lines(self, lines, filters: Filters):
+        """§6 Nhà thuốc: lọc dòng bán theo danh mục thuốc (kê đơn / hoạt chất đúng như ghi)."""
+        if self.thuoc is None or not len(self.thuoc):
+            raise _Unavailable('Không có danh mục thuốc')
+        if self.thuoc['ma_hang'].isna().any() or self.thuoc['ma_hang'].duplicated().any():
+            raise DataError('Khóa ma_hang trong danh mục thuốc thiếu/trùng')
+        info = self.thuoc.set_index('ma_hang')
+        if filters.prescription is not None:
+            self.rules.require('Thuốc kê đơn','ghi ke don trong danh muc thuoc','con lai la hang khong ke don')
+            if not info['ke_don'].notna().any():
+                raise _Unavailable('Danh mục thuốc không ghi thuốc kê đơn')
+            flags = lines['ma_hang'].map(info['ke_don'])
+            rx = pd.Series([False if pd.isna(v) else bool(v) for v in flags],index=lines.index)
+            lines = lines[rx.eq(filters.prescription)]
+        if filters.active_ingredient is not None:
+            self.rules.require('Doanh thu theo hoạt chất','dung nhu vay','danh muc thuoc','mot loai rieng')
+            if not info['hoat_chat'].notna().any():
+                raise _Unavailable('Danh mục thuốc không ghi hoạt chất')
+            def key(text):
+                return ' '.join(unicodedata.normalize('NFC',str(text)).casefold().split())
+            wanted = key(filters.active_ingredient)
+            codes = info.index[info['hoat_chat'].map(lambda v: False if pd.isna(v) else key(v) == wanted)]
+            if not len(codes):
+                raise _Unavailable('Không có hoạt chất này trong danh mục thuốc')
+            lines = lines[lines['ma_hang'].isin(codes)]
         return lines
 
     def _revenue_rule(self):
@@ -728,3 +766,58 @@ class SalesMetrics:
         self._need_order_ids()
         self.rules.require('Số đơn','khong huy','khong tra')
         return Answer('number',_number(Decimal(len(on_day))/n,self.rules.rounding_places('average')))
+
+    # ---- Nhà thuốc (§6) và hiệu ứng tăng giá (§5) ----
+
+    @_answer
+    def prescription_share(self, period: DateRange, prescription: bool = True):
+        """Tỉ lệ doanh thu thuốc kê đơn (hoặc không kê đơn) trên doanh thu cả shop, % (tính theo doanh thu)."""
+        self.rules.require('Thuốc kê đơn','ti le ke don tinh theo doanh thu')
+        numerator = self._revenue(period,Filters(prescription=prescription))
+        denominator = self._revenue(period,Filters())
+        if denominator == 0:
+            raise _Unavailable('Tổng doanh thu bằng 0, không tính được tỉ lệ')
+        return Answer('percent',_number(numerator/denominator*100,self.rules.rounding_places('percent')))
+
+    def _price_increase_dates(self, product_id: str):
+        """Các ngày tăng giá của một mặt hàng theo bảng giá: giá mới > giá liền trước; tăng lên cùng một giá
+        nhiều lần thì chỉ lần đầu. None nếu bảng giá không có mặt hàng này."""
+        if self.price_list is None or not len(self.price_list):
+            return None
+        rows = self.price_list[self.price_list['ma_hang'].eq(product_id)].sort_values('ngay_ap_dung',kind='stable')
+        if not len(rows):
+            return None
+        if rows['ngay_ap_dung'].duplicated().any():
+            raise DataError('Bảng giá có hai mức giá trong cùng một ngày áp dụng')
+        dates, seen = [], set()
+        for (_, row), before in zip(rows.iterrows(), [None, *rows['gia'].iloc[:-1]]):
+            if before is not None and row['gia'] > before and row['gia'] not in seen:
+                dates.append(row['ngay_ap_dung'].date())
+            if before is not None and row['gia'] > before:
+                seen.add(row['gia'])
+        return dates
+
+    @_answer
+    def price_increase_effect(self, product_id: str, day, n: int):
+        """§5 Hiệu ứng tăng giá: % thay đổi số lượng (đơn vị cơ bản) N ngày kể từ D (gồm D) so với N ngày ngay trước D,
+        bỏ đơn huỷ/trả. Có bảng giá của mặt hàng thì D phải là lần tăng (lần đầu nếu tăng lên cùng giá nhiều lần),
+        không thì DataError. CHƯA CHẮC: shop không có bảng giá thì tin ngày D do câu hỏi nêu."""
+        self.rules.require('Hiệu ứng tăng giá','gia moi cao hon gia lien truoc','lan dau','tinh ca d',
+                           'n ngay ngay truoc d','bo don huy va don tra')
+        self.rules.require('Phần trăm thay đổi, tăng trưởng','ky truoc','so am')
+        if type(n) is not int or n <= 0:
+            raise ValueError('n must be a positive integer')
+        day = as_date(day)
+        increases = self._price_increase_dates(product_id)
+        if increases is not None and day not in increases:
+            raise DataError(f'{day} không phải lần tăng giá (đầu tiên lên mức giá đó) của mặt hàng theo bảng giá')
+        filters = Filters(product_ids=(product_id,))
+        before = self.quantity(DateRange(day-timedelta(days=n),day-timedelta(days=1)),filters)
+        after = self.quantity(DateRange(day,day+timedelta(days=n-1)),filters)
+        for part in (before, after):
+            if part.type == 'unanswerable':
+                return part
+        if before.answer == 0:
+            raise _Unavailable('Số lượng N ngày trước bằng 0, không tính được phần trăm thay đổi')
+        change = (Decimal(str(after.answer))-Decimal(str(before.answer)))/Decimal(str(before.answer))*100
+        return Answer('percent',_number(change,self.rules.rounding_places('percent')))

@@ -37,6 +37,10 @@ OPS: dict[str, tuple[tuple[str, ...], tuple[str, ...], str]] = {
     "price_on_date": (("number",), ("product", "period"), "giá bán một đơn vị cơ bản của mặt hàng trong một ngày"),
     "slow_moving_products": (("number", "list"), ("period",), "số (hoặc danh sách) mặt hàng ế trong kỳ"),
     "gross_profit": (("number",), ("period",), "lãi gộp"),
+    "prescription_share": (("percent",), ("period", "prescription"),
+                           "% doanh thu thuốc kê đơn (prescription=true) hoặc hàng không kê đơn (false) trên doanh thu cả shop"),
+    "price_increase_effect": (("percent",), ("product", "period", "days"),
+                              "% thay đổi số lượng bán N ngày kể từ ngày tăng giá D (period kind=date) so với N ngày ngay trước"),
     "customer_count": (("number",), ("period",), "số khách đã mua, có thể theo số đơn min_orders/max_orders"),
     "customer_share": (("percent",), ("period",), "% khách thoả điều kiện số đơn trên số khách đã mua"),
     "products_in_at_least": (("number",), ("period", "min_orders"), "số mặt hàng có mặt trong >= min_orders đơn"),
@@ -106,6 +110,9 @@ class Spec(BaseModel):
     min_orders: int | None = None
     max_orders: int | None = None
     weekday: int | None = None
+    prescription: bool | None = None          # lọc doanh thu: true = thuốc kê đơn, false = còn lại
+    active_ingredient: str | None = None      # hoạt chất như trong câu hỏi (thuốc phối hợp là loại riêng)
+    days: int | None = None                   # price_increase_effect: N ngày
 
     @model_validator(mode="after")
     def _check(self):
@@ -125,6 +132,10 @@ class Spec(BaseModel):
             raise ValueError("k ngoài 1..50")
         if self.weekday is not None and not 0 <= self.weekday <= 6:
             raise ValueError("weekday ngoài 0..6")
+        if self.days is not None and not 1 <= self.days <= 366:
+            raise ValueError("days ngoài 1..366")
+        if self.op == "price_increase_effect" and self.period.kind != "date":
+            raise ValueError("price_increase_effect cần period kind=date (ngày tăng giá D)")
         for p in [self.period] + list(self.periods or []):
             if p is not None and p.kind in ("previous_period", "same_period_last_year"):
                 raise ValueError(f"kind {p.kind} chỉ dùng cho comparison")

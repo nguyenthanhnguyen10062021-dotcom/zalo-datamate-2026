@@ -156,3 +156,22 @@ def test_post_check_rules():
     assert post_check(grp, 'thuốc có hoạt chất Loratadin tháng 3/2026 bán bao nhiêu tiền')[1] == 'ungrounded_filter'
     ch, _ = parse_spec({**MARCH, 'channel': 'tai_quay', 'staff': 'NV002'})
     assert post_check(ch, 'tháng 3/2026 nhân viên mã NV002 bán tại quầy được bao nhiêu')[1] is None
+
+
+def test_new_ops_spec_and_ingredient_matching():
+    ok = {'op': 'prescription_share', 'answer_type': 'percent', 'period': {'kind': 'this_month'}, 'prescription': False}
+    assert parse_spec(ok)[0] is not None                       # prescription=False vẫn tính là đã cung cấp
+    assert parse_spec({k: v for k, v in ok.items() if k != 'prescription'})[0] is None
+    price = {'op': 'price_increase_effect', 'answer_type': 'percent', 'product': 'Nước suối', 'days': 7,
+             'period': {'kind': 'date', 'day': 5, 'month': 2, 'year': 2026}}
+    assert parse_spec(price)[0] is not None
+    assert parse_spec({**price, 'period': {'kind': 'month', 'month': 2, 'year': 2026}})[0] is None   # D phải là một ngày
+    assert parse_spec({**price, 'days': 0})[0] is None
+    cat = Catalog({'mat_hang': pd.DataFrame({'ma_hang': ['P'], 'ten_hang': ['x'], 'nhom_hang': [None], 'don_vi_co_ban': [None]}),
+                   'don_hang': pd.DataFrame({'ma_don': ['O']}),
+                   'thuoc': pd.DataFrame({'ma_hang': ['P', 'Q'], 'hoat_chat': ['Paracetamol', 'Paracetamol + Cafein'],
+                                          'ke_don': [False, False]})})
+    assert cat.active_ingredient('paracetamol') == 'Paracetamol'
+    assert cat.active_ingredient('paracetamol + cafein') == 'Paracetamol + Cafein'
+    with pytest.raises(Ambiguous):
+        cat.active_ingredient('cafein')                          # thuốc phối hợp là loại riêng: không khớp một phần

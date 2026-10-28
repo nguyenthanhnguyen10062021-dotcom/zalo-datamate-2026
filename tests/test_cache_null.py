@@ -53,3 +53,12 @@ def test_json_value_keeps_real_types():
             "ngay": pd.Timestamp("2026-01-02")}
     back = json.loads(json.dumps(meta, default=json_value))
     assert back == {"co": True, "khong": False, "n": 3, "rong": None, "ngay": "2026-01-02 00:00:00"}
+
+
+def test_build_thuoc_keeps_only_drug_rows():
+    from loader.build import build_thuoc
+    mat = pd.DataFrame({'ma_hang': ['A', 'B', 'C', 'D'], 'hoat_chat': ['Loratadin', None, ' ', None],
+                        'ke_don': [None, True, None, None]})
+    out = build_thuoc(mat)
+    assert out['ma_hang'].tolist() == ['A', 'B'] and out['hoat_chat'].isna().tolist() == [False, True]
+    assert list(build_thuoc(mat.iloc[0:0]).columns) == ['ma_hang', 'hoat_chat', 'ke_don']

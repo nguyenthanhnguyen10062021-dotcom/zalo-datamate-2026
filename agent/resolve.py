@@ -46,6 +46,8 @@ class Catalog:
         self.payments = _values(orders, "hinh_thuc_tt")
         self.customer_groups = _values(orders, "nhom_khach")
         self.staff = _values(orders, "ma_nhan_vien")
+        thuoc = tables.get("thuoc")
+        self.ingredients = _values(thuoc, "hoat_chat") if thuoc is not None else []
 
     # ---- sản phẩm ----
     def product_ids(self, text: str) -> tuple[str, ...]:
@@ -105,6 +107,14 @@ class Catalog:
         if not self.staff:
             return text.strip().upper()     # tiệm không ghi nhân viên: business/ trả unanswerable
         raise Ambiguous(f"nhân viên '{text}' không khớp mã nào")
+
+    def active_ingredient(self, text: str) -> str:
+        """Hoạt chất phải KHỚP ĐÚNG (bỏ dấu, hoa thường, dấu câu): thuốc phối hợp là loại riêng nên không khớp một phần."""
+        key = norm(text)
+        found = [v for v in self.ingredients if norm(v) == key]
+        if len(found) == 1:
+            return found[0]
+        raise Ambiguous(f"hoạt chất '{text}' không khớp đúng hoạt chất nào trong danh mục")
 
     def unit(self, text: str) -> str:
         key = norm(text)
