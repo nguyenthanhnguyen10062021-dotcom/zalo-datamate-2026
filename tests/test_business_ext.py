@@ -190,6 +190,25 @@ def test_gross_profit(tables, ext_rules):
     assert engine(tables, ext_rules).gross_profit(MARCH).type == 'unanswerable'
 
 
+# C8 ------------------------------------------------------------------------------------------------
+
+def test_customer_and_product_counts(tables, ext_rules):
+    e = engine(tables, ext_rules)
+    assert e.customer_count(MARCH).answer == 2                     # K1, K2; K3 chỉ có đơn trả, khách lẻ bỏ
+    assert e.customer_count(MARCH, min_orders=3).answer == 1       # từ 3 trở lên gồm 3
+    assert e.customer_count(MARCH, min_orders=4).answer == 0
+    assert e.customer_count(MARCH, max_orders=1).answer == 1
+    assert e.customer_share(MARCH, min_orders=2).answer == 50
+    assert e.products_in_at_least(MARCH, 2).answer == 1            # P1 có mặt 3 đơn
+    assert e.products_in_at_least(MARCH, 1).answer == 4            # phí phục vụ không đếm
+    assert e.order_count(MARCH, Filters(product_ids=('P1',))).answer == 3
+
+
+def test_count_bounds_need_rule(tables, rules):
+    with pytest.raises(UnsupportedRule):
+        engine(tables, rules).customer_count(MARCH, min_orders=2)
+
+
 # C9 ------------------------------------------------------------------------------------------------
 
 def test_top_staff_by_revenue(tables, ext_rules):
@@ -199,3 +218,8 @@ def test_top_staff_by_revenue(tables, ext_rules):
     assert top.single().type == 'string' and top.single().answer == 'NV1'
 
 
+
+
+def test_customer_count_needs_no_names_when_codes_exist(tables, ext_rules):
+    tables['don_hang'] = tables['don_hang'].drop(columns='ten_khach')
+    assert engine(tables, ext_rules).customer_count(MARCH, min_orders=3).answer == 1

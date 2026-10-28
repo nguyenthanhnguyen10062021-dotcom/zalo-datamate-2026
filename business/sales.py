@@ -419,6 +419,36 @@ class SalesMetrics:
         cost.loc[merchandise.index] = _values(merchandise,'so_luong')*_values(merchandise,'gia_von_dong')
         return pd.Series([Decimal(str(round(r-c,6))) for r,c in zip(revenue,cost)],index=lines.index,dtype=object)
 
+    def _identified(self, orders, labels=True):
+        """§3 Xác định khách: bỏ khách lẻ; trả (đơn của khách định danh, cột khoá, nhãn tên).
+        Chỉ đếm (labels=False) thì không cần cột tên khi tiệm có mã khách."""
+        self.rules.require('Xác định khách','ma khach','khach le','khong xep hang','ten ghi tren don')
+        if labels:
+            self._column(self.orders,'ten_khach')
+        orders = orders[~self._walkins(orders)]
+        key = 'ma_khach' if self.meta.get('co_ma_khach') else 'khach_key'
+        self._column(self.orders,key)
+        if orders[key].isna().any():
+            raise DataError('Khách hàng thiếu định danh')
+        return orders, key, (orders.groupby(key)['ten_khach'].first().to_dict() if labels else {})
+
+    def _bounds_rule(self, low, high):
+        if low is None and high is None:
+            return
+        for value in (low, high):
+            if value is not None and (type(value) is not int or value < 0):
+                raise ValueError('bounds must be non-negative integers')
+        self.rules.require('Quá N, hơn N, trên N, dưới N','khong gom N','tu N tro len thi gom N')
+
+    @staticmethod
+    def _within(counts: pd.Series, low, high):
+        mask = pd.Series(True,index=counts.index)
+        if low is not None:
+            mask &= counts >= low
+        if high is not None:
+            mask &= counts <= high
+        return mask
+
     @_answer
     def best_period(self, period: DateRange, granularity: str = 'day', metric: str = 'revenue',
                     kind: str = 'max', filters: Filters = Filters()):
@@ -522,6 +552,43 @@ class SalesMetrics:
         self._column(self.lines,'thanh_tien')
         profit = self._line_profit(self._line_sales(orders,filters))
         return Answer('number',_number(sum(profit,Decimal(0)),self.rules.rounding_places('money')))
+
+    def _customer_orders(self, period, valid=True, labels=True):
+        self._need_order_ids()
+        self.rules.require('Số đơn','khong huy','so don cua mot khach','khach da mua')
+        return self._identified(self._orders(period,Filters(),valid),labels)
+
+    @_answer
+    def customer_count(self, period: DateRange, min_orders: int | None = None, max_orders: int | None = None):
+        """Số khách đã mua (§1, §3) có số đơn hợp lệ trong [min_orders, max_orders] (gồm hai đầu).
+        'Từ N trở lên', 'ít nhất N' -> min_orders=N; 'quá/hơn N' -> min_orders=N+1 (§2)."""
+        self._bounds_rule(min_orders,max_orders)
+        orders, key, _ = self._customer_orders(period,labels=False)
+        counts = orders.groupby(key).size()
+        return Answer('number',int(self._within(counts,min_orders,max_orders).sum()))
+
+    @_answer
+    def customer_share(self, period: DateRange, min_orders: int | None = None, max_orders: int | None = None):
+        """Phần trăm khách thoả điều kiện số đơn trong số khách đã mua trong kỳ."""
+        self._bounds_rule(min_orders,max_orders)
+        orders, key, _ = self._customer_orders(period,labels=False)
+        counts = orders.groupby(key).size()
+        if not len(counts):
+            raise _Unavailable('Không có khách đã mua trong kỳ')
+        share = Decimal(int(self._within(counts,min_orders,max_orders).sum()))/len(counts)*100
+        return Answer('percent',_number(share,self.rules.rounding_places('percent')))
+
+    @_answer
+    def products_in_at_least(self, period: DateRange, n: int, filters: Filters = Filters()):
+        """Số mặt hàng có mặt trong từ n đơn hợp lệ khác nhau trở lên (§1 Số đơn, §2 'từ N trở lên' gồm N)."""
+        self._bounds_rule(n,None)
+        self._need_order_ids()
+        self.rules.require('Số đơn','khong huy','so don co mot mat hang')
+        self.rules.require('Mặt hàng','phi phuc vu','khong dem')
+        lines = self._line_sales(self._orders(period,filters,True),filters,True)
+        if lines['ma_hang'].isna().any():
+            raise DataError('Dòng hàng thiếu mã hàng')
+        return Answer('number',int((lines.groupby('ma_hang')['ma_don'].nunique() >= n).sum()))
 
     def _staff_orders(self, period, valid=True):
         self._column(self.orders,'ma_nhan_vien')
