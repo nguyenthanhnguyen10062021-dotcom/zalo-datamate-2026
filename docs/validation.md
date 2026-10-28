@@ -4,7 +4,7 @@ Chạy trên macOS / Python 3.14, nhánh `nguyen/business-ext`, cache do `load_a
 
 | Kiểm tra | Kết quả |
 |---|---|
-| `python -m pytest -q -rs` | 244 passed, 0 skipped (test chấm điểm trên `train/answers.jsonl` đã chạy được) |
+| `python -m pytest -q -rs` | 245 passed, 0 skipped (test chấm điểm trên `train/answers.jsonl` đã chạy được) |
 | `python -m compileall -q business verify_business.py` | Exit 0 |
 | `git diff --check` | Exit 0 |
 | `python verify_business.py` — bộ chọn cũ | khớp gold 409/409, khớp phép tính cũ 409/409, 0 lỗi (không đổi) |
