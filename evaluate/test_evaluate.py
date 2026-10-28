@@ -30,11 +30,14 @@ SAMPLE_GOLD = [
 ]
 
 
+ROOT = HERE.parent
+# Gốc repo trước (bố cục hiện tại), sau đó các vị trí cũ khi evaluate.py còn nằm cùng thư mục dữ liệu
+GOLD_CANDIDATES = (ROOT / "train/answers.jsonl", ROOT / "data/train/answers.jsonl",
+                   HERE / "train/answers.jsonl", HERE / "data/train/answers.jsonl")
+
+
 def _find_gold_file():
-    for p in (HERE / "data/train/answers.jsonl", HERE / "train/answers.jsonl"):
-        if p.exists():
-            return p
-    return None
+    return next((p for p in GOLD_CANDIDATES if p.exists()), None)
 
 
 def write_jsonl(path, records):
@@ -77,7 +80,8 @@ def test_self_score_sample(tmp_path):
 def test_self_score_real_file(tmp_path):
     path = _find_gold_file()
     if path is None:
-        pytest.skip("không tìm thấy answers.jsonl")
+        pytest.skip("chưa có dữ liệu train của BTC (đã tìm: "
+                    + ", ".join(str(p.relative_to(ROOT)) for p in GOLD_CANDIDATES) + ")")
     golds, _ = load_jsonl(path)
     res = run(tmp_path, golds, [gold_to_submission(g) for g in golds])
     assert res["correct"] == res["total"] == len(golds)
