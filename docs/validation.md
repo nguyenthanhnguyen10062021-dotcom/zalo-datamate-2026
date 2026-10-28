@@ -1,16 +1,16 @@
-# Trạng thái kiểm chứng ngày 2026-10-29
+# Trạng thái kiểm chứng ngày 2026-10-29 (sau khi gộp sửa loader #3)
 
 Chạy trên macOS / Python 3.14, nhánh `nguyen/business-ext`, cache do `load_all.py` tạo (loader không đổi so với `main`).
 
 | Kiểm tra | Kết quả |
 |---|---|
-| `python -m pytest -q -rs` | 245 passed, 0 skipped (test chấm điểm trên `train/answers.jsonl` đã chạy được) |
+| `python -m pytest -q -rs` | 255 passed, 0 skipped (test chấm điểm trên `train/answers.jsonl` đã chạy được) |
 | `python -m compileall -q business verify_business.py` | Exit 0 |
 | `git diff --check` | Exit 0 |
 | `python verify_business.py` — bộ chọn cũ | khớp gold 409/409, khớp phép tính cũ 409/409, 0 lỗi (không đổi) |
-| `python verify_business.py` — bộ chọn mở rộng C1–C9 | khớp 435/446 |
+| `python verify_business.py` — bộ chọn mở rộng C1–C9 | khớp 446/446 |
 
-**API hiện có phủ được 863/3000 câu train (chọn được), khớp 844** (bộ cũ 409/417, trong đó 8 câu bộ cũ bỏ qua; mở rộng 435/446).
+**API hiện có phủ được 863/3000 câu train (chọn được), khớp 855** (bộ cũ 409/417, trong đó 8 câu bộ cũ bỏ qua; mở rộng 446/446).
 
 ## Bộ chọn mở rộng theo loại
 
@@ -25,12 +25,12 @@ Bộ chọn là regex bảo thủ, chỉ nằm trong `verify_business.py` để 
 | C5 | số ly size M/L | 46 | 46 | 0 | 0 |
 | C6 | số mặt hàng ế | 20 | 20 | 0 | 0 |
 | C7 | lãi gộp (cửa hàng, hàng lời nhất) | 12 | 12 | 0 | 0 |
-| C8 | đếm khách / mặt hàng theo số đơn | 46 | 35 | 11 | 0 |
+| C8 | đếm khách / mặt hàng theo số đơn | 46 | 46 | 0 | 0 |
 | C9 | nhân viên (doanh thu theo mã, bán giỏi nhất) | 13 | 13 | 0 | 0 |
 
-### C8 lệch 11 câu: lỗi ghi cache của loader, không phải luật
+### C8: trước 35/46, sau khi sửa loader 46/46
 
-Cả 11 câu đều thừa đúng 1 khách. Nguyên nhân: `load_all.py::to_parquet` đổi `pd.NA` của cột chuỗi thành chuỗi `"<NA>"`. Ở 13 tiệm có mã khách, các đơn khách lẻ vì vậy mang `ma_khach = "<NA>"` và bị đếm thành một khách. Giả lập trong bộ nhớ việc coi `"<NA>"` là rỗng thì C8 khớp 46/46, các loại khác không đổi. Chưa sửa vì phần này không được sửa loader. Cách sửa đề xuất là một dòng trong `to_parquet`: dùng `pd.isna(v)` thay cho kiểm tra `None`/`float NaN`, rồi chạy lại `load_all.py`.
+11 câu lệch trước đây đều do `load_all.py::to_parquet` ghi `pd.NA` thành chuỗi `"<NA>"`, nên khách lẻ bị đếm thành một khách. Đã sửa ở PR #3 (ô rỗng ghi null thật); nạp lại cache thì C8 khớp 46/46, các loại khác không đổi.
 
 ### C10: luật chỉ có ở rulebook public
 
