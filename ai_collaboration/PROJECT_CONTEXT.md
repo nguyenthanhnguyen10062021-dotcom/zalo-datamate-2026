@@ -1,12 +1,12 @@
 # Bối cảnh project DataMate
 
-**Cập nhật triển khai 2026-10-29:** bản sửa sau review Gemini lượt 04 đã được áp dụng vào code chính tại commit [`c567b29`](https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/commit/c567b29); thêm 39 ca kiểm thử, full suite đạt 258 passed, 1 skipped và verifier đạt 409/409. Xem [CODEX_IMPLEMENTATION_04.md](rounds/001_business_to_nlu/CODEX_IMPLEMENTATION_04.md) và [validation hiện hành](../docs/validation.md) để có phạm vi thay đổi. Phần snapshot ngày 2026-10-28 dưới đây và `GEMINI_HANDOFF.md` giữ vai trò hồ sơ lịch sử, không bao gồm bản sửa mới.
+**Trạng thái kết thúc phiên 2026-10-29:** bản sửa sau review Gemini lượt 04 đã áp dụng và đẩy lên `VuongNguyen` tại [`c567b29`](https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/commit/c567b29); hồ sơ trao đổi đã đẩy tại `211e492`. Thêm 39 ca kiểm thử, full suite đạt 258 passed, 1 skipped và verifier đạt 409/409. Xem [tiến độ/điểm tiếp tục](../docs/PROGRESS.md), [triển khai](rounds/001_business_to_nlu/CODEX_IMPLEMENTATION_04.md) và [validation](../docs/validation.md). Bối cảnh dưới đây được cập nhật theo code hiện hành; `GEMINI_HANDOFF.md` ngày 2026-10-28 là snapshot lịch sử riêng.
 
-Snapshot cập nhật ngày **2026-10-28**, timezone Asia/Saigon. Code nghiệp vụ, test và tài liệu đã commit tại `1c89252` trên nhánh `VuongNguyen`. Gói trao đổi này được commit kế tiếp trên cùng nhánh. SHA256 của nội dung từng file (UTF-8, chuẩn hóa xuống dòng LF) được đính kèm trong `GEMINI_HANDOFF.md`.
+Bối cảnh cập nhật ngày **2026-10-29**, timezone Asia/Saigon. Code nghiệp vụ và test hiện hành nằm tại `c567b29`. Handoff cũ giữ source `1c89252` và SHA256 của các file ở thời điểm đó; không dùng các hash cũ để kiểm tra nội dung file hiện tại đã thay đổi.
 
 Repo: https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/tree/VuongNguyen
 
-Phiên bản code cố định: https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/tree/1c89252
+Phiên bản code cố định hiện hành: https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/tree/c567b29
 
 Gemini web không tự có quyền đọc repo chỉ vì được cung cấp link. Có thể dùng gói handoff tự chứa hoặc yêu cầu đúng source cần bổ sung. Báo cáo kiểm chứng tổng hợp được commit ở `docs/validation.md`; dữ liệu BTC và báo cáo từng câu chỉ có tại local.
 
@@ -59,6 +59,7 @@ Exports: `Rulebook`, `UnsupportedRule`, `Periods`, `DateRange`, `SalesMetrics`, 
 - Thời gian: today/yesterday, N ngày, tuần, tháng, quý, đầu năm, Tết tra calendar, kỳ liền trước cùng số ngày.
 - Metrics: revenue, order_count, cancelled_orders, cancellation_rate, average_order_value, quantity, top_products, top_customers, revenue_growth, revenue_share.
 - Filters: product_ids, product_group, channel, payment, customer_group, shift.
+- cancellation_rate và top_customers đã nhận filter cấp đơn; product filter ở hai API này bị reject rõ ràng. Kiểm tra catalog/liên kết dòng hàng theo dependency của metric; vẫn chặn ORPHAN khi dùng dòng hàng.
 - Kết quả: `Answer`; chuyển thành object nộp bài bằng `to_submission(id)`.
 - Thiếu loại dữ liệu/ngoài kỳ/mẫu số 0: unanswerable. Dữ liệu chuẩn lỗi hoặc thiếu một phần: `DataError`. Luật ngoài mẫu được hỗ trợ: `UnsupportedRule`. Hai lỗi sau không được tự coi là chứng minh câu hỏi unanswerable.
 - Đọc file rulebook do người gọi truyền và kiểm tra các cụm điều khoản cần thiết. Đây là parser có phạm vi giới hạn, không suy luận mọi nội dung rulebook tiếng Việt bất kỳ.
@@ -69,18 +70,20 @@ API chi tiết và giới hạn nằm trong `docs/business.md`, cũng được c
 
 ## Bằng chứng kiểm chứng gần nhất
 
-- Full pytest chạy lại trước commit/push ngày 2026-10-28: **219 passed, 1 skipped**. Test cũ `evaluate/test_evaluate.py::test_self_score_real_file` tìm gold dưới `evaluate/` thay vì gốc repo nên vẫn bị bỏ qua; không phải thiếu đáp án train hiện tại.
+- Full pytest chạy trên code chính sau patch ngày 2026-10-29: **258 passed, 1 skipped**, gồm 39 ca mới lưu trong repo. Test cũ `evaluate/test_evaluate.py::test_self_score_real_file` tìm gold dưới `evaluate/` thay vì gốc repo nên vẫn bị bỏ qua; không phải thiếu đáp án train hiện tại.
 - Bộ kiểm tra chọn **417/3000** câu, bỏ qua **8** theo bộ chọn cũ, đối chiếu được **409**.
 - Thư viện mới khớp gold **409/409**, khớp phép tính cũ **409/409**, 0 lỗi.
 - Thành phần: 187 doanh thu tháng, 76 số đơn hủy, 130 số lượng, 8 doanh thu ca sáng và 8 ca chiều.
 - Đây là hồi quy trên tập con, **không phải** PA toàn bộ 3000 câu và không chứng minh các metric khác đều đúng trên dữ liệu thật.
 - Có test tổng hợp cho các hàm khác và smoke API trên một doanh nghiệp train/một public. Có review độc lập; các lỗi phát hiện đã được tái hiện bằng test và sửa.
-- Đã chạy lại `verify_business.py` trước khi chuẩn bị push: exit 0, vẫn khớp 409/409; `compileall` và `git diff --check` qua. Cần chạy lại sau thay đổi code có liên quan.
+- Đã chạy mới `verify_business.py --out reports/business_verification_applied04` trên code chính sau patch: exit 0, khớp 409/409, 0 lỗi; `git diff --check` qua. Cần chạy lại sau thay đổi code có liên quan. Lượt cập nhật tài liệu cuối phiên không chạy lại code/test.
 
 ## Chưa có
 
 Tầng hiểu câu hỏi/resolve thực thể, model weights/runtime inference, QueryPlan schema, dispatcher/validator, confidence/abstain toàn hệ thống, runner sinh full submission, log từng câu và Docker. Chưa có API kho, nợ, lợi nhuận và đầy đủ luật ngành.
 
-## Hướng đang thảo luận
+## Hướng tiếp theo đã thống nhất
 
-Review xem thư viện nghiệp vụ có đủ làm nền cho một lát cắt NLU đầu tiên không; chọn cách nối câu hỏi → kế hoạch có cấu trúc → phép tính → đáp án, và cách đánh giá trên train tách biệt. Chưa coi phương án nào là quyết định đã chốt.
+Triển khai executor QueryPlan v1: normalize → structural/semantic validation → resolve period/entity/unit → capability → public API → Answer/log. V1 hoãn boolean/raw_decimal và parent-share. Resolver cần unit tường minh và policy tên trùng nhiều mã; schema phải có URI thuần. Sau executor mới tích hợp model câu hỏi → QueryPlan và đánh giá NLU riêng.
+
+Đã kiểm chứng đến phản hồi Gemini 04; prompt 05 đã sẵn, chưa có GEMINI_RESPONSE_05.md trong repo khi kết thúc phiên. Codex tiếp tục tự kiểm chứng phản hồi mới theo ủy quyền của người dùng, không chờ duyệt từng chi tiết. Xem [thứ tự công việc phiên sau](../docs/PROGRESS.md).

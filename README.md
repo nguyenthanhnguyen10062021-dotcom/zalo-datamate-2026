@@ -64,18 +64,21 @@ Hàm chính: `from loader import load_business; res = load_business("train/data/
 
 ## Tiến độ
 
+**Kết thúc phiên 2026-10-29:** xem [tiến độ và điểm tiếp tục](docs/PROGRESS.md). Bản sửa nghiệp vụ đã áp dụng vào code chính tại [`c567b29`](https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/commit/c567b29); hồ sơ review đã đẩy tại `211e492`. Giai đoạn tiếp theo là executor QueryPlan v1 tất định, sau đó mới tích hợp model hiểu câu hỏi.
+
 Trao đổi với Gemini web hoặc LLM khác: xem [ai_collaboration/README.md](ai_collaboration/README.md). Gói bàn giao có bối cảnh, source snapshot, yêu cầu thảo luận và chỗ lưu phản hồi để Codex kiểm chứng.
 
-Kiểm chứng mới nhất ngày 2026-10-28: **219 test đạt, 1 test cũ bỏ qua**; thư viện nghiệp vụ khớp gold **409/409 câu đối chiếu được** trên tập chọn lọc, chưa phải PA toàn bộ train. Xem [phạm vi và bằng chứng](docs/validation.md).
+Kiểm chứng code mới nhất ngày 2026-10-29: **258 test đạt, 1 test cũ bỏ qua**; thư viện nghiệp vụ khớp gold **409/409 câu đối chiếu được**, 0 lỗi, trên tập chọn lọc. Bộ 409 chạm 3/10 API, chưa phải PA toàn bộ train hoặc kết quả của tầng NLU. Xem [phạm vi và bằng chứng](docs/validation.md).
 
 | Bước | Nội dung | Trạng thái |
 |---|---|---|
-| 1 | `evaluate.py`: chấm điểm theo luật BTC | ✅ |
-| 2 | Loader về schema chuẩn (v0 + 2c: viết tắt, suy từ giá trị) | ✅ 409/409 câu khớp đáp án train (263 doanh thu/huỷ + 146 số lượng/ca) |
-| 3 | Thư viện hàm nghiệp vụ theo rulebook trên schema chuẩn | Bản đầu: thời gian/lịch Tết, doanh thu, số đơn, số lượng, tỷ lệ, xếp hạng; xem [API và giới hạn](docs/business.md) |
-| 4 | LLM (hiểu câu hỏi, sinh mapping cho mẫu file lạ) | |
-| 5 | Dự phòng + chiến lược abstain | |
-| 6 | Đóng gói Docker | |
+| 1 | Bộ chấm local | Đã có code/test; chưa được chứng nhận là evaluator BTC |
+| 2 | Loader về schema chuẩn | Bản đầu đã chạy 44 doanh nghiệp; chưa chứng minh mọi mapping đúng |
+| 3 | Thư viện nghiệp vụ và patch sau review Gemini | Đã áp dụng patch, thêm 39 ca kiểm thử; xem [API và giới hạn](docs/business.md) |
+| 4 | Executor QueryPlan: validator, resolver, dispatcher | Đã thống nhất phạm vi v1; chưa tích hợp thành module production |
+| 5 | Model câu hỏi → QueryPlan | Chưa chọn/tích hợp model |
+| 6 | Mở rộng đánh giá, confidence và abstain toàn hệ thống | Chưa có kết quả đầu-cuối; verifier hiện tại là tập con |
+| 7 | Runner offline và Docker | Chưa hoàn thiện |
 
 ## Luật thi quan trọng
 

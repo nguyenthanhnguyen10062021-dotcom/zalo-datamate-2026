@@ -2,6 +2,8 @@
 
 Thư mục này dùng để đưa bối cảnh từ repo sang Gemini web, nhận phản biện rồi đưa về Codex kiểm chứng và triển khai. Mỗi vòng tập trung vào một vấn đề. Có thể dùng cùng cách này với LLM khác.
 
+**Điểm tiếp tục sau phiên 2026-10-29:** đọc [docs/PROGRESS.md](../docs/PROGRESS.md). Code đã áp dụng tại `c567b29`, hồ sơ đã đẩy tại `211e492`; 258 test đạt, 1 skip cũ và verifier 409/409. Đã review Gemini đến lượt 04; chưa có phản hồi 05. Ưu tiên tiếp theo là executor QueryPlan v1; các đoạn “chưa áp dụng” bên dưới là trạng thái lịch sử của từng lượt.
+
 ## Bắt đầu ngay
 
 Nhánh làm việc: [VuongNguyen trên GitHub](https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/tree/VuongNguyen). Bản code nền cho vòng 001: [`1c89252`](https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/tree/1c89252). Xem [bằng chứng kiểm chứng](../docs/validation.md).

@@ -17,7 +17,7 @@ Tài liệu này ghi trạng thái thực tế. Đề xuất của một AI khô
 | ID | Vấn đề | Trạng thái | Nơi trao đổi |
 |---|---|---|---|
 | O001 | Contract và kiến trúc NLU → phép tính; độ sẵn sàng của API hiện tại | Đã thống nhất baseline QueryPlan tối thiểu; patch nghiệp vụ và test đã áp dụng tại c567b29. Executor/NLU chưa triển khai | `rounds/001_business_to_nlu/` |
-| O002 | Mở rộng nghiệp vụ trước hay triển khai một lát cắt NLU nhỏ trước | Chưa chốt | Vòng 001 |
+| O002 | Thứ tự mở rộng hệ thống | Ưu tiên executor QueryPlan v1 trên nghiệp vụ hiện có, mở rộng kiểm chứng rồi tích hợp NLU; chưa mở rộng kho/nợ/lãi | Vòng 001; docs/PROGRESS.md |
 | O003 | Model inference offline và môi trường chạy | Chưa chọn; chưa yêu cầu quyết định trong vòng 001 | Thảo luận sau khi rõ phạm vi và ngân sách |
 
 ## Kết luận review ngày 2026-10-29
@@ -67,6 +67,10 @@ Chi tiết ở [CODEX_REVIEW_04.md](rounds/001_business_to_nlu/CODEX_REVIEW_04.m
 ## Áp dụng patch nghiệp vụ sau lượt 04
 
 Người dùng yêu cầu trực tiếp đưa bản sửa đã kiểm chứng vào code chính, chuyển phản chứng thành test và chạy lại kiểm tra. Đã áp dụng `CODEX_BUSINESS_PATCH_04.diff` vào `business/sales.py`, thêm 39 ca kiểm thử trong repo; full suite 258 passed, 1 skipped. Verifier chạy mới trên code chính đạt 409/409 khớp gold và phép tính cũ, 0 lỗi. Code và test đã commit tại `c567b29`; chi tiết ở [CODEX_IMPLEMENTATION_04.md](rounds/001_business_to_nlu/CODEX_IMPLEMENTATION_04.md). Các nhận định “chưa sửa production” trong review trước là trạng thái lịch sử.
+
+## Bàn giao cuối phiên 2026-10-29
+
+Code/test đã đẩy tại `c567b29`; hồ sơ trao đổi đã đẩy tại `211e492` trên nhánh `VuongNguyen`. Dừng phiên sau khi hoàn tất cập nhật tài liệu; không triển khai thêm executor trong lượt tổng kết. Tiến độ, giới hạn kiểm chứng, vấn đề còn mở và thứ tự tiếp tục nằm ở [docs/PROGRESS.md](../docs/PROGRESS.md).
 
 ## Mẫu ghi quyết định mới
 
