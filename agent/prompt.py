@@ -3,7 +3,14 @@ from __future__ import annotations
 
 import json
 
-from .spec import OPS
+from .spec import OPS, parse_spec
+
+
+def canonical(spec: dict) -> str:
+    """Spec theo ĐÚNG thứ tự trường của schema. Bắt buộc: guided decoding sinh khoá theo thứ tự schema, ví dụ
+    viết khác thứ tự thì model bỏ sót trường (vd mất `product` vì đã viết `unit` trước)."""
+    parsed, _ = parse_spec(spec)
+    return parsed.model_dump_json(exclude_none=True) if parsed else json.dumps(spec, ensure_ascii=False)
 
 PERIOD_HELP = """\
 Kỳ (period / comparison / periods[i]) là object {"kind": ..., các số CHÉP từ câu hỏi}. KHÔNG tự tính ngày.
@@ -51,6 +58,12 @@ SYNTHETIC = [
     ("Tháng 1/2026 khách nào mua nhiều đơn nhất?",
      {"op": "top_customers", "answer_type": "string", "period": {"kind": "month", "month": 1, "year": 2026},
       "metric": "orders", "k": 1}),
+    ("Mặt hàng nào bán chạy nhất tháng 9/2025?",
+     {"op": "top_products", "answer_type": "string", "period": {"kind": "month", "month": 9, "year": 2025},
+      "metric": "quantity", "k": 1}),
+    ("Tháng 4/2026 bán được bao nhiêu chai Nước suối 500ml?",
+     {"op": "quantity", "answer_type": "number", "period": {"kind": "month", "month": 4, "year": 2026},
+      "product": "Nước suối 500ml", "unit": "chai"}),
     ("Top 5 món bán chạy nhất 7 ngày gần nhất",
      {"op": "top_products", "answer_type": "list", "period": {"kind": "last_days", "n": 7}, "metric": "quantity", "k": 5}),
     ("Nhóm hàng Đồ uống chiếm bao nhiêu % doanh thu tháng 3/2026?",
@@ -68,7 +81,7 @@ SYNTHETIC = [
 
 def system_prompt() -> str:
     ops = "\n".join(f"- {name}: {desc} [answer_type: {'|'.join(types) or '-'}]" for name, (types, _, desc) in OPS.items())
-    examples = "\n".join(f"Hỏi: {q}\nSpec: {json.dumps(s, ensure_ascii=False)}" for q, s in SYNTHETIC)
+    examples = "\n".join(f"Hỏi: {q}\nSpec: {canonical(s)}" for q, s in SYNTHETIC)
     return f"""Bạn chuyển câu hỏi tiếng Việt về dữ liệu bán hàng của một cửa hàng nhỏ thành MỘT spec JSON.
 Bạn KHÔNG tính số, KHÔNG tính ngày, KHÔNG trả lời câu hỏi: chương trình sẽ tính theo spec.
 Câu hỏi có thể viết tắt, không dấu, sai chính tả (dthu = doanh thu, bn/bnhiu = bao nhiêu, hnay = hôm nay, hqua = hôm qua).
@@ -100,6 +113,6 @@ def messages(question: str, as_of: str, card: str, shots: list[dict]) -> list[di
     msgs = [{"role": "system", "content": system_prompt()}]
     for ex in shots:
         msgs.append({"role": "user", "content": f"Câu hỏi: {ex['question']}\nTrả về spec JSON."})
-        msgs.append({"role": "assistant", "content": json.dumps(ex["spec"], ensure_ascii=False)})
+        msgs.append({"role": "assistant", "content": canonical(ex["spec"])})
     msgs.append({"role": "user", "content": user_prompt(question, as_of, card)})
     return msgs
