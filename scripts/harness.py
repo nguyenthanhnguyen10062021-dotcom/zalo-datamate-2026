@@ -69,7 +69,7 @@ def check_source(path: str, source: str) -> list[str]:
     except SyntaxError as exc:
         return [f"{path}:{exc.lineno}: syntax: {exc.msg}; fix Python syntax."]
     layer = path.split("/")[0]
-    if layer not in {"loader", "business", "evaluate"} or Path(path).name.startswith("test_"):
+    if layer not in {"loader", "business", "queryplan", "evaluate"} or Path(path).name.startswith("test_"):
         return errors
     for node in ast.walk(tree):
         location = f"{path}:{getattr(node, 'lineno', 1)}:"
@@ -86,9 +86,12 @@ def check_source(path: str, source: str) -> list[str]:
                 if layer == "evaluate":
                     if module not in sys.stdlib_module_names:
                         errors.append(f"{location} evaluator must use stdlib only: {module}; move integration outside evaluate/.")
-                elif module in DEV_MODULES or (layer == "loader" and module == "business") or (layer == "business" and module == "loader"):
+                elif (module in DEV_MODULES
+                      or layer == "loader" and module in {"business", "queryplan"}
+                      or layer == "business" and module in {"loader", "queryplan"}
+                      or layer == "queryplan" and module == "loader"):
                     errors.append(f"{location} dependency: {layer} cannot import {module}; pass data through the public API.")
-        if layer in {"loader", "business"} and isinstance(node, ast.Constant) and isinstance(node.value, str):
+        if layer in {"loader", "business", "queryplan"} and isinstance(node, ast.Constant) and isinstance(node.value, str):
             if "answers.jsonl" in node.value.replace("\\", "/").lower():
                 errors.append(f"{location} gold: answers.jsonl belongs in verification tools, never {layer}/.")
     return errors

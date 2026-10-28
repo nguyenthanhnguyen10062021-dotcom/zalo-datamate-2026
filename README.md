@@ -65,6 +65,7 @@ check_with_gold.py kiểm tra bằng đáp án train
 generalize_check.py kiểm tra khả năng tổng quát
 tests/             unit test parser, viết tắt, suy luận từ giá trị
 business/          API nghiệp vụ bán hàng, rulebook và thời gian
+queryplan/         validator/resolver/capability/dispatcher JSON plan -> Answer
 verify_business.py kiểm chứng thư viện nghiệp vụ trên tập câu chọn lọc
 ai_collaboration/  gói bàn giao và các vòng thảo luận với Gemini web
 ```
@@ -73,9 +74,11 @@ Hàm chính: `from loader import load_business; res = load_business("train/data/
 
 ## Tiến độ
 
-**Kết thúc phiên 2026-10-29:** xem [tiến độ và điểm tiếp tục](docs/PROGRESS.md). Bản sửa nghiệp vụ đã áp dụng vào code chính tại [`c567b29`](https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/commit/c567b29); hồ sơ review đã đẩy tại `211e492`. Giai đoạn tiếp theo là executor QueryPlan v1 tất định, sau đó mới tích hợp model hiểu câu hỏi.
+**Cập nhật 2026-10-29:** đã triển khai [QueryPlan executor v1](docs/queryplan.md) trong working tree trên 10 public API bán hàng; chưa tích hợp model hiểu câu hỏi. Xem [tiến độ và điểm tiếp tục](docs/PROGRESS.md). Bản sửa nghiệp vụ trước đó ở [`c567b29`](https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/commit/c567b29); hồ sơ review ở `211e492` là lịch sử.
 
 Trao đổi với Gemini web hoặc LLM khác: xem [ai_collaboration/README.md](ai_collaboration/README.md). Gói bàn giao có bối cảnh, source snapshot, yêu cầu thảo luận và chỗ lưu phản hồi để Codex kiểm chứng.
+
+Executor v1 có **121 test tổng hợp**; harness full sau review đạt **430 passed, 2 local_data deselected**. Các số kiểm chứng harness/business bên dưới thuộc baseline trước executor; không phải kết quả NLU.
 
 Kiểm chứng harness ngày 2026-10-29: toàn bộ suite **302 test đạt, 1 test cũ bỏ qua**; full profile dùng cho CI chạy local **301 đạt, 2 ca cần dữ liệu bị loại**. Lượt verifier mới khớp gold **409/409 câu đối chiếu được**, 0 lỗi, trên tập chọn lọc. Bộ 409 chạm 3/10 API, chưa phải PA toàn bộ train hoặc kết quả của tầng NLU. Xem [phạm vi và bằng chứng](docs/validation.md).
 
@@ -84,7 +87,7 @@ Kiểm chứng harness ngày 2026-10-29: toàn bộ suite **302 test đạt, 1 t
 | 1 | Bộ chấm local | Đã có code/test; chưa được chứng nhận là evaluator BTC |
 | 2 | Loader về schema chuẩn | Bản đầu đã chạy 44 doanh nghiệp; chưa chứng minh mọi mapping đúng |
 | 3 | Thư viện nghiệp vụ và patch sau review Gemini | Đã áp dụng patch, thêm 39 ca kiểm thử; xem [API và giới hạn](docs/business.md) |
-| 4 | Executor QueryPlan: validator, resolver, dispatcher | Đã thống nhất phạm vi v1; chưa tích hợp thành module production |
+| 4 | Executor QueryPlan: validator, resolver, dispatcher | Đã tích hợp trên 10 API; tests tổng hợp, chưa đo gold executor |
 | 5 | Model câu hỏi → QueryPlan | Chưa chọn/tích hợp model |
 | 6 | Mở rộng đánh giá, confidence và abstain toàn hệ thống | Chưa có kết quả đầu-cuối; verifier hiện tại là tập con |
 | 7 | Runner offline và Docker | Chưa hoàn thiện |

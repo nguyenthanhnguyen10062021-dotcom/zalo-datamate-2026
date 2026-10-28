@@ -6,7 +6,7 @@ Tài liệu này ghi trạng thái thực tế. Đề xuất của một AI khô
 
 | ID | Nội dung | Trạng thái và căn cứ |
 |---|---|---|
-| D001 | Tách loader, thư viện nghiệp vụ và tầng hiểu câu hỏi | Loader và `business/` đã triển khai theo trao đổi với người dùng; tầng hiểu câu hỏi chưa triển khai |
+| D001 | Tách loader, thư viện nghiệp vụ và tầng hiểu câu hỏi | Loader, `business/` và QueryPlan executor v1 đã triển khai; model hiểu câu hỏi chưa triển khai |
 | D002 | Truyền rulebook đúng split và as_of_date vào phép tính | Đã có API và test; parser rulebook có phạm vi hỗ trợ giới hạn |
 | D003 | Không tự coi DataError/UnsupportedRule là bằng chứng câu hỏi unanswerable | Đã thể hiện bằng API/test và tài liệu business |
 | D004 | Gemini web tham gia review phát triển, người dùng chuyển tiếp qua file | Người dùng yêu cầu; chưa có tích hợp API hoặc đồng bộ tự động |
@@ -16,8 +16,8 @@ Tài liệu này ghi trạng thái thực tế. Đề xuất của một AI khô
 
 | ID | Vấn đề | Trạng thái | Nơi trao đổi |
 |---|---|---|---|
-| O001 | Contract và kiến trúc NLU → phép tính; độ sẵn sàng của API hiện tại | Đã thống nhất baseline QueryPlan tối thiểu; patch nghiệp vụ và test đã áp dụng tại c567b29. Executor/NLU chưa triển khai | `rounds/001_business_to_nlu/` |
-| O002 | Thứ tự mở rộng hệ thống | Ưu tiên executor QueryPlan v1 trên nghiệp vụ hiện có, mở rộng kiểm chứng rồi tích hợp NLU; chưa mở rộng kho/nợ/lãi | Vòng 001; docs/PROGRESS.md |
+| O001 | Contract và kiến trúc NLU → phép tính; độ sẵn sàng của API hiện tại | QueryExecutor v1 đã có trong working tree, gọi 10 API; model NLU chưa triển khai | [Contract executor](../docs/queryplan.md) |
+| O002 | Thứ tự mở rộng hệ thống | Tiếp theo inventory capability/verifier mở rộng, rồi NLU offline và runner tối thiểu; chưa mở rộng kho/nợ/lãi | Vòng 001; docs/PROGRESS.md |
 | O003 | Model inference offline và môi trường chạy | Chưa chọn; chưa yêu cầu quyết định trong vòng 001 | Thảo luận sau khi rõ phạm vi và ngân sách |
 
 ## Kết luận review ngày 2026-10-29
@@ -71,6 +71,13 @@ Người dùng yêu cầu trực tiếp đưa bản sửa đã kiểm chứng v�
 ## Bàn giao cuối phiên 2026-10-29
 
 Code/test đã đẩy tại `c567b29`; hồ sơ trao đổi đã đẩy tại `211e492` trên nhánh `VuongNguyen`. Dừng phiên sau khi hoàn tất cập nhật tài liệu; không triển khai thêm executor trong lượt tổng kết. Tiến độ, giới hạn kiểm chứng, vấn đề còn mở và thứ tự tiếp tục nằm ở [docs/PROGRESS.md](../docs/PROGRESS.md).
+
+## E001 — Triển khai QueryPlan executor v1 (2026-10-29)
+
+- Người dùng duyệt trực tiếp đề xuất executor JSON → 10 API, validator/resolver/capability và test tổng hợp. Codex chọn package `queryplan/` và validator Python không thêm dependency; không đổi API business.
+- Resolver dùng khớp NFC/casefold/khoảng trắng có dấu; nhiều mã cùng tên hoặc nhãn raw trùng sau normalize gây ambiguous. Thiếu loại thông tin có bằng chứng là unanswerable; unknown mention là unresolved/abstain. Không fuzzy hoặc logic theo ID.
+- ExecutionResult giữ Answer/status/stage; không tự ghi log, không nuốt lỗi implementation. Growth this_month mặc định so cùng số ngày tháng trước theo rulebook; share giữ mẫu số cả shop.
+- Chưa cung cấp JSON Schema constrained decoding, model, verifier mở rộng hoặc runner. Hồ sơ/bằng chứng: [plan executor](../docs/superpowers/plans/2026-10-29-queryplan-v1.md), [validation](../docs/validation.md). Schema/helper ở các phản hồi cũ vẫn là snapshot.
 
 ## Mẫu ghi quyết định mới
 

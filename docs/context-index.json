@@ -19,10 +19,10 @@
       "summary": "Verifier là hồi quy tập chọn lọc; công bố total/selected/skipped/compared/errors. Không suy toàn-train PA hoặc tính đúng NLU từ 409 câu. full/CI chỉ dùng fixture tổng hợp."
     },
     {
-      "id": "queryplan-next-step",
-      "touches": ["business/*", "ai_collaboration/*"],
-      "read": ["docs/PROGRESS.md", "ai_collaboration/DECISIONS.md"],
-      "summary": "Bước production tiếp theo là QueryPlan v1 tất định trên public API trước khi tích hợp model offline; schema/helper trong hồ sơ thảo luận chưa phải executor đã chạy."
+      "id": "queryplan-v1-contract",
+      "touches": ["queryplan/*", "tests/test_queryplan*", "tests/queryplan_fixtures.py", "business/*", "ai_collaboration/*"],
+      "read": ["docs/queryplan.md", "queryplan/AGENTS.md", "docs/PROGRESS.md", "ai_collaboration/DECISIONS.md"],
+      "summary": "QueryExecutor v1 đã có validator/resolver/capability/dispatch trên 10 public API; giữ status/stage và các loại lỗi riêng. NLU, schema constrained decoding và verifier mở rộng chưa có; không suy PA từ hồi quy business cũ."
     },
     {
       "id": "gemini-evidence-and-manual-transfer",

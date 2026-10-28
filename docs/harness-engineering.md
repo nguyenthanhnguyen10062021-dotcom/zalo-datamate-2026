@@ -63,7 +63,7 @@ Data profile cần train/rulebook.md, questions.jsonl, answers.jsonl và cache c
 
 fast đọc file source/docs trong inventory Git, không quét đệ quy venv/dataset. File bị add -f vào train/cache vẫn bị phát hiện. Link check chỉ áp dụng AGENTS, README hiện hành và docs hiện hành; không sửa lịch sử rounds hay thiết kế cũ vì các link snapshot. Root AGENTS tối đa 6000 bytes, scoped 3000 bytes; vượt thì tách chi tiết ra tài liệu có link.
 
-AST guard bắt import mạng đã liệt kê tại loader/business/evaluate và gold filename literal tại loader/business. Đây là kiểm tra tĩnh hỗ trợ review, không phải sandbox mạng hoặc bộ chứng minh chống leakage. Quy tắc theo ID và nguồn gốc dữ liệu vẫn do test/review kiểm chứng. Giữ production dependency hiện có; chưa thêm linter/formatter/typechecker toàn repo để tránh thay đổi ngoài phạm vi.
+AST guard bắt import mạng đã liệt kê tại loader/business/queryplan/evaluate và gold filename literal tại loader/business/queryplan. Guard cấm queryplan import loader/dev tools và cấm loader/business import ngược queryplan. Đây là kiểm tra tĩnh hỗ trợ review, không phải sandbox mạng hoặc bộ chứng minh chống leakage. Quy tắc theo ID và nguồn gốc dữ liệu vẫn do test/review kiểm chứng. Giữ production dependency hiện có; chưa thêm linter/formatter/typechecker toàn repo để tránh thay đổi ngoài phạm vi.
 
 ## CI và bảo trì
 

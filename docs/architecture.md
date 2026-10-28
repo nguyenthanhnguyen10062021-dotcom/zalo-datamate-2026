@@ -9,7 +9,10 @@ flowchart LR
   T --> B[business: rulebook + periods + sales]
   R[Rulebook / calendar đúng split + as_of_date] --> B
   B --> A[Answer]
-  Q[QueryPlan executor / NLU: chưa triển khai] -. gọi public API .-> B
+  Q[queryplan: validate / resolve / capability / dispatch] --> B
+  T --> Q
+  R --> Q
+  N[NLU: chưa triển khai] -. sinh JSON plan .-> Q
   A -. runner chưa hoàn thiện .-> S[Submission]
   S --> E[evaluate: chỉ stdlib]
   G[Gold local] --> E
@@ -23,12 +26,13 @@ Mũi tên trong sơ đồ là luồng dữ liệu/cách gọi, không phải quy
 |---|---|---|
 | loader | `load_business`, đọc thô -> parse/type -> mapping -> bảng chuẩn | Nội bộ loader; pandas/numpy/openpyxl và stdlib |
 | business | `Rulebook`, `Periods`, `SalesMetrics`, `Answer`; tính tất định trên bảng chuẩn | Nội bộ business; pandas/numpy và stdlib |
+| queryplan | `QueryExecutor`, `validate_plan`, `ExecutionResult`; JSON plan -> Answer và trạng thái | Nội bộ queryplan, public API business; pandas và stdlib |
 | evaluate | Chấm type/format/value; local evaluator chưa được chứng nhận tương đương BTC | Stdlib |
 | Root tools | `load_all.py`, `verify_business.py`, `check_with_gold.py`, `generalize_check.py` | Ghép các API phục vụ phát triển/kiểm chứng |
 | Harness | `scripts/harness.py`: ngữ cảnh, structural checks, test runner | Stdlib; gọi pytest/verifier qua subprocess |
 | Tests | Fixture tổng hợp trong Python/tmp_path; một số ca local_data | Có thể gọi nhiều tầng để kiểm chứng contract |
 
-`business/` không import `loader/`: caller đưa bảng hoặc cache vào API. Loader không biết gold hoặc cách trả lời câu hỏi. Evaluator không phụ thuộc implementation tính toán. Kiến trúc tương lai của executor cần được thêm vào sơ đồ và guard khi module đó thực sự tồn tại.
+`business/` không import `loader/` hoặc `queryplan/`: caller đưa bảng hoặc cache vào API. `queryplan/` không import loader/evaluator/verifier/network; caller cấp bảng chuẩn và rulebook/calendar đúng split. Loader không biết gold hoặc cách trả lời câu hỏi. Evaluator không phụ thuộc implementation tính toán. Xem [contract executor](queryplan.md); guard harness bảo vệ ranh giới package mới.
 
 Các bảng chuẩn chính: `cua_hang`, `don_hang`, `dong_hang`, `mat_hang`, `quy_doi_don_vi`, `khach_hang`. Xem phần schema tương ứng trong [DESIGN](../surveys/DESIGN.md); không tự tạo schema mới từ bản tóm tắt này.
 

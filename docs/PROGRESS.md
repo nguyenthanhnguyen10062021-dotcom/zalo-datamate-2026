@@ -2,6 +2,16 @@
 
 Ngày theo Asia/Saigon. Nhánh làm việc: `VuongNguyen`.
 
+## QueryPlan executor v1 — cập nhật mới nhất 2026-10-29
+
+Người dùng duyệt triển khai executor trên 10 API sẵn có. Đã thêm package `queryplan/`: validator Python không dependency mới, resolver thời gian/tên/đơn vị, capability check và dispatcher; `ExecutionResult` giữ Answer/status/stage. Không đổi loader/business/evaluator; chưa thêm model hoặc runner submission.
+
+- [Contract, ví dụ và giới hạn](queryplan.md); [spec](superpowers/specs/2026-10-29-queryplan-v1.md), [plan và execution record](superpowers/plans/2026-10-29-queryplan-v1.md).
+- Có **121 ca queryplan tổng hợp**, cả 10 operation kiểm tra expected literals và public API. Thêm 8 ca guard cho package mới. Full sau review mới nhất: **430 passed, 2 local_data deselected**.
+- Review ban đầu tìm 2 lỗi period/calendar; lượt xác nhận tiếp tìm thêm nhãn list/dict gây TypeError trước kiểm tra kiểu. Đã sửa tại resolver với 6 regression RED → GREEN, giữ lỗi dữ liệu thành data_error/abstain theo dependency. Toàn bộ pytest sau sửa mới nhất: **431 passed, 1 skip helper cũ**.
+- Data profile chạy lại hoàn tất exit 0: local_data **1 passed, 1 skip cũ**; verifier mới **409/409** khớp gold và legacy, **0 lỗi**, chọn **417/3000**, legacy bỏ **8**. Full trong lượt data là 424/2 deselected trước sáu ca nhãn cuối; full 430 và bare 431 đã chạy sau sửa. Verifier không gọi queryplan, source business/cache không đổi; không suy PA/coverage của executor/NLU từ kết quả này. Xem [validation](validation.md).
+- Bước kế tiếp: inventory capability và verifier mở rộng không phụ thuộc legacy gate; sau đó model offline và runner tối thiểu để đo đầu-cuối.
+
 ## Cập nhật Harness Engineering — 2026-10-29
 
 Theo yêu cầu người dùng, đã thêm harness phát triển tham khảo OpenAI/Anthropic và Trail-Code trên nền `d3ae67b`. Hồ sơ kiểm chứng được ghi trước khi commit harness; người dùng đã yêu cầu commit và đẩy lên nhánh `VuongNguyen`. Source nghiệp vụ, loader và evaluator không thay đổi; hai test cần dữ liệu được gắn marker local_data.
@@ -13,11 +23,11 @@ Theo yêu cầu người dùng, đã thêm harness phát triển tham khảo Ope
 - Review độc lập đã tái hiện và sửa guard bỏ sót báo cáo bị force-track; đã có regression test. CI hosted chưa được xác nhận trong hồ sơ kiểm chứng local này; xem GitHub Actions của commit sau khi push. Không cài Trail/package/hook toàn máy.
 - Đối chiếu gold mới qua data profile: **409/409 khớp gold và legacy, 0 lỗi**, chọn 417/3000, legacy skip 8. Local-data tests: 1 passed, 1 skip helper cũ. Báo cáo local: `reports/harness/business_verification.json` và `.md`; không rebuild loader/cache vì code loader không đổi.
 
-Hồ sơ triển khai: [plan và execution record](superpowers/plans/2026-10-29-harness-engineering.md). Bước sản phẩm kế tiếp vẫn là QueryPlan executor v1 bên dưới; bắt đầu phiên mới bằng AGENTS và context cho file cần sửa.
+Hồ sơ harness: [plan và execution record](superpowers/plans/2026-10-29-harness-engineering.md). Đây là bằng chứng của lượt trước khi thêm executor; trạng thái mới nhất ở đầu tài liệu.
 
 ## Đang ở bước nào
 
-Đã có loader và thư viện tính toán nghiệp vụ bán hàng. Bản sửa sau bốn lượt phản biện Gemini đã vào code chính và được kiểm chứng. Bước tiếp theo là dựng bộ thực thi QueryPlan v1 tất định; chưa có pipeline hoàn chỉnh từ câu hỏi tiếng Việt đến đáp án.
+Đã có loader, thư viện nghiệp vụ bán hàng và QueryPlan executor v1. Bản sửa sau bốn lượt phản biện Gemini và executor đã hoàn tất; người dùng yêu cầu cập nhật nhánh `VuongNguyen`. Xem git log để xác định commit bàn giao. Chưa có pipeline hoàn chỉnh từ câu hỏi tiếng Việt đến đáp án vì chưa tích hợp NLU.
 
 | Thành phần | Trạng thái khi kết thúc phiên |
 |---|---|
@@ -25,8 +35,8 @@ Hồ sơ triển khai: [plan và execution record](superpowers/plans/2026-10-29-
 | Loader và schema chuẩn | Bản đầu đã chạy 44 doanh nghiệp train/public; chưa chứng minh mọi mapping đúng |
 | Nghiệp vụ bán hàng | 10 API; có rulebook, period/calendar, filter và Answer |
 | Patch sau review Gemini | Đã áp dụng vào code chính, thêm 39 ca kiểm thử trong repo |
-| Contract QueryPlan v1 | Đã thống nhất phạm vi tối thiểu; schema/helper trong hồ sơ là đề xuất, chưa thành module production |
-| Validator, resolver, dispatcher | Chưa tích hợp thành executor hoàn chỉnh |
+| Contract QueryPlan v1 | Đã có validator Python nghiêm ngặt; JSON Schema/helper trong hồ sơ cũ vẫn là đề xuất, chưa cung cấp schema constrained decoding |
+| Validator, resolver, dispatcher | Đã tích hợp thành QueryExecutor trên 10 API, kiểm thử tổng hợp; chưa đo gold executor/NLU |
 | Model câu hỏi → QueryPlan | Chưa chọn model, weights hoặc runtime inference |
 | PA/coverage toàn hệ thống, Docker và runner nộp bài | Chưa hoàn thiện |
 
@@ -73,13 +83,13 @@ Chi tiết: [validation](validation.md), [API](business.md), [hồ sơ triển k
 
 1. Đọc báo cáo này, PROJECT_CONTEXT, DECISIONS và source tại commit code mới; kiểm tra nhánh/worktree trước khi sửa.
 2. Nếu có `GEMINI_RESPONSE_05.md`, tự kiểm chứng các phản chứng mới. Hiện **chưa có file phản hồi 05** trong repo. Gói prompt 05 đã chuẩn bị, cần kèm cập nhật code đã áp dụng khi gửi; không lấy snapshot `1c89252` làm source hiện hành.
-3. Dựng executor nhỏ: normalize → structural/semantic validation → resolve period/entity/unit → capability → dispatch → Answer và log trạng thái. Test từ JSON plan trước khi gắn LLM.
+3. Executor JSON v1 đã triển khai và kiểm thử; tiếp tục bằng [API hiện hành](queryplan.md), không áp dụng lại schema/helper lịch sử. Executor trả status/stage để caller ghi log local, chưa tự ghi file.
 4. Mở rộng verifier sang các thao tác/kỳ còn thiếu, báo chọn/bỏ/lỗi/chênh; không chọn câu theo việc đã khớp gold. Cố định manifest đánh giá hồi cứu.
 5. Chọn và tích hợp model offline sau khi executor ổn định; đo riêng độ đúng plan và kết quả đầu-cuối.
 6. Hoàn thiện runner, Docker và đo PA/coverage/precision/thời gian trên phạm vi đã công bố.
 
 ## Điểm bắt đầu nhanh
 
-> Tiếp tục từ docs/PROGRESS.md. Bản sửa nghiệp vụ đã áp dụng tại c567b29, 258 test đạt và verifier 409/409. Hãy kiểm tra phản hồi Gemini mới nếu có, rồi triển khai executor QueryPlan v1 trên public API hiện hành; giữ rõ phần đã chạy và phần còn đề xuất.
+> Tiếp tục từ docs/PROGRESS.md và docs/queryplan.md. Executor v1 đã có trong source; kiểm tra git status, git log và execution record trước khi sửa. Ưu tiên inventory capability/verifier mở rộng rồi tích hợp model offline; không suy PA đầu-cuối từ verifier business chọn lọc.
 
-Lần cập nhật cuối phiên này chỉ sửa tài liệu và tổng hợp số liệu đã chạy; không trình bày lại chúng như một lượt test/verifier mới.
+Các mục baseline nghiệp vụ/harness phía trên là lịch sử đã ghi; lượt triển khai executor và kết quả chạy mới được ghi riêng ở đầu tài liệu và validation.

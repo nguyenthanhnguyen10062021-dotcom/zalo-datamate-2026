@@ -2,6 +2,8 @@
 
 `business/` là tầng tính toán tất định. Tầng hiểu câu hỏi gọi API bằng tham số rõ ràng; thư viện không nhận câu hỏi tự nhiên và không đọc đáp án train.
 
+[QueryPlan executor v1](queryplan.md) đã gọi các public API này từ JSON plan có kiểm tra/resolve; model hiểu câu hỏi vẫn chưa triển khai.
+
 ## Ví dụ
 
 Chạy từ gốc repo sau khi đã chạy `load_all.py`:

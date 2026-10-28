@@ -30,6 +30,13 @@ def harness():
     ("loader/io.py", "from urllib.request import urlopen", "offline"),
     ("business/sales.py", "gold = 'train/answers.jsonl'", "gold"),
     ("loader/io.py", "gold = Path('answers.jsonl')", "gold"),
+    ("queryplan/executor.py", "import requests", "offline"),
+    ("queryplan/executor.py", "from loader import load_business", "loader"),
+    ("queryplan/executor.py", "import evaluate", "evaluate"),
+    ("queryplan/executor.py", "import verify_business", "verify_business"),
+    ("queryplan/executor.py", "gold = 'train/answers.jsonl'", "gold"),
+    ("business/sales.py", "import queryplan", "queryplan"),
+    ("loader/build.py", "from queryplan import QueryExecutor", "queryplan"),
     ("business/sales.py", "def broken(:", "syntax"),
 ])
 def test_source_violation_has_location_and_remediation(harness, path, source, clue):
@@ -43,6 +50,7 @@ def test_source_violation_has_location_and_remediation(harness, path, source, cl
     ("loader/build.py", "from .mapping import Dictionaries\nimport numpy as np"),
     ("evaluate/evaluate.py", "from collections import Counter\nimport json"),
     ("tests/test_example.py", "import business\nx = 'answers.jsonl'"),
+    ("queryplan/executor.py", "from business import SalesMetrics\nfrom .contract import validate_plan"),
 ])
 def test_source_allowed_dependencies(harness, path, source):
     assert harness.check_source(path, source) == []
