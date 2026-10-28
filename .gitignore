@@ -34,3 +34,7 @@ venv/
 .DS_Store
 .env
 .env.*
+
+# kho few-shot dựng từ câu hỏi train (dữ liệu BTC), log chạy agent
+artifacts/
+runs/

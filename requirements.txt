@@ -4,3 +4,7 @@ numpy==2.5.4
 openpyxl==3.1.5
 pyarrow==26.0.0     # pandas đọc/ghi parquet (cache/)
 pytest==9.2.0
+openai==3.40.0      # client OpenAI-compatible (vLLM)
+pydantic==2.14.1    # hợp đồng spec
+pyyaml==6.0.3       # config/model.yaml
+# chỉ lúc dev (server vLLM trên Modal): pip install modal==1.5.4
