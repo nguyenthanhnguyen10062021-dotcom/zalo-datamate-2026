@@ -15,6 +15,9 @@ import re
 import pandas as pd
 
 import check_with_gold as legacy
+from agent.dispatch import execute
+from agent.resolve import Catalog
+from agent.spec import parse_spec
 from business import DataError, DateRange, Filters, Periods, Rulebook, SalesMetrics, UnsupportedRule
 
 
@@ -132,6 +135,8 @@ class _Ctx:
             if isinstance(name, str) and name.strip():
                 self.names.setdefault(legacy.norm_question(name), set()).add(code)
         self.base = {c: u for c, u in zip(products['ma_hang'], products['don_vi_co_ban']) if isinstance(u, str)}
+        self.display = {c: n for c, n in zip(products['ma_hang'], products['ten_hang']) if isinstance(n, str)}
+        self.catalog = Catalog(tables)
         self.periods = None
 
     def product(self, t):
@@ -146,14 +151,15 @@ class _Ctx:
         return best, tuple(sorted(self.names[best]))
 
 
-def _one_month(t, periods):
+def _one_month(t, periods=None):
+    """Kỳ một tháng dạng spec: {"kind":"month",...} hoặc {"kind":"this_month"}; không chắc -> None."""
     if OTHER_PERIOD.search(t) or DATE_TOKEN.search(t):
         return None
     months = legacy.MONTH_RE.findall(t)
     if len(months) == 1 and len(MONTH_TOKEN.findall(t)) <= 1 and 'thang nay' not in t:
-        return periods.month(int(months[0][0]), int(months[0][1]))
+        return {'kind': 'month', 'month': int(months[0][0]), 'year': int(months[0][1])}
     if not months and not MONTH_TOKEN.search(t) and re.search(r'\bthang nay\b', t):
-        return periods.this_month()
+        return {'kind': 'this_month'}
     return None
 
 
@@ -183,6 +189,14 @@ def _contiguous(seq):
     return all((m2, y2) == ((m1 % 12) + 1, y1 + (m1 == 12)) for (m1, y1), (m2, y2) in zip(seq, seq[1:]))
 
 
+def _month(m, y):
+    return {'kind': 'month', 'month': m, 'year': y}
+
+
+def _name(ctx, codes):
+    return ctx.display[codes[0]]
+
+
 def sel_c1(t, ctx):
     if not re.search(r'\b(ngay|thang) nao\b', t) or not re.search(r'doanh thu|dthu|revenue|nhieu tien|nhiu tien|ban dat', t):
         return None
@@ -192,25 +206,27 @@ def sel_c1(t, ctx):
         'min' if re.search(r'thap nhat|it tien nhat|it nhat', t) else None
     if kind is None:
         return None
+    base = {'op': 'best_period', 'answer_type': 'date', 'metric': 'revenue', 'kind': kind}
     if re.search(r'\bngay nao\b', t):
-        period = _one_month(t, ctx.periods)
-        return period and (lambda e: e.best_period(period, 'day', kind=kind))
+        period = _one_month(t)
+        return period and {**base, 'granularity': 'day', 'period': period}
     seq = _month_seq(t)
     if len(seq) < 2 or not _contiguous(seq):
         return None
-    period = DateRange(ctx.periods.month(*seq[0]).start, ctx.periods.month(*seq[-1]).end)
-    return lambda e: e.best_period(period, 'month', kind=kind)
+    (m1, y1), (m2, y2) = seq[0], seq[-1]
+    return {**base, 'granularity': 'month',
+            'period': {'kind': 'month_range', 'month': m1, 'year': y1, 'end_month': m2, 'end_year': y2}}
 
 
 def sel_c2(t, ctx):
     found = ctx.product(t)
     if found is None or 'tien' not in t.split():
         return None
-    period = _one_month(t, ctx.periods)
+    period = _one_month(t)
     rest = legacy.MONTH_RE.sub(' ', f' {t} '.replace(f' {found[0]} ', ' ')).replace('thang nay', ' ')
     if period is None or not all(w in C2_WORDS for w in rest.split()):
         return None
-    return lambda e: e.revenue(period, Filters(product_ids=found[1]))
+    return {'op': 'revenue', 'answer_type': 'number', 'period': period, 'product': _name(ctx, found[1])}
 
 
 def sel_c3(t, ctx):
@@ -224,7 +240,8 @@ def sel_c3(t, ctx):
     if not unit or not base or legacy.norm_question(base) != unit[1]:
         return None
     d, m, y = map(int, dates[0])
-    return lambda e: e.price_on_date(found[1][0], date(y, m, d))
+    return {'op': 'price_on_date', 'answer_type': 'number', 'product': _name(ctx, found[1]),
+            'period': {'kind': 'date', 'day': d, 'month': m, 'year': y}}
 
 
 def sel_c4(t, ctx):
@@ -233,13 +250,13 @@ def sel_c4(t, ctx):
     seq = _month_seq(t)
     if len(seq) < 2:
         return None
-    periods = [ctx.periods.month(m, y) for m, y in seq]
+    periods = [_month(m, y) for m, y in seq]
     if re.search(r'tang lien tuc', t):
-        return lambda e: e.is_monotonic(periods, 'increasing')
+        return {'op': 'is_monotonic', 'answer_type': 'boolean', 'periods': periods, 'direction': 'increasing'}
     if re.search(r'giam lien tuc', t):
-        return lambda e: e.is_monotonic(periods, 'decreasing')
+        return {'op': 'is_monotonic', 'answer_type': 'boolean', 'periods': periods, 'direction': 'decreasing'}
     if re.search(r'moi thang|tung thang|lan luot|theo thu tu thoi gian', t):
-        return lambda e: e.revenue_series(periods)
+        return {'op': 'revenue_series', 'answer_type': 'list', 'periods': periods}
     return None
 
 
@@ -247,8 +264,9 @@ def sel_c5(t, ctx):
     size = re.search(r'\bly size (m|l)\b', t)
     if not size or re.search(r'nhom|khach|\bca (sang|chieu)\b|tien|doanh thu|dthu', t) or ctx.product(t):
         return None
-    period = _one_month(t, ctx.periods)
-    return period and (lambda e: e.quantity(period, Filters(size=size[1].upper()), unit='ly'))
+    period = _one_month(t)
+    return period and {'op': 'quantity', 'answer_type': 'number', 'period': period, 'size': size[1].upper(),
+                       'unit': 'ly'}
 
 
 def sel_c6(t, ctx):
@@ -260,24 +278,24 @@ def sel_c6(t, ctx):
     r = RANGE_RE.search(t)
     if r:
         d1, m1, y1, d2, m2, y2 = map(int, r.groups())
-        period = DateRange(date(y1, m1, d1), date(y2, m2, d2))
+        period = {'kind': 'range', 'day': d1, 'month': m1, 'year': y1, 'end_day': d2, 'end_month': m2, 'end_year': y2}
     elif LAST_DAYS.search(t):
-        period = ctx.periods.last_days(int(LAST_DAYS.search(t)[1]))
+        period = {'kind': 'last_days', 'n': int(LAST_DAYS.search(t)[1])}
     else:
         return None
-    return lambda e: e.slow_moving_products(period)
+    return {'op': 'slow_moving_products', 'answer_type': 'number', 'period': period}
 
 
 def sel_c7(t, ctx):
     if re.search(r'nhom|khach|nhan vien|ke don', t):
         return None
-    period = _one_month(t, ctx.periods)
+    period = _one_month(t)
     if period is None:
         return None
     if re.search(r'\b(hang|mat hang) nao\b', t) and re.search(r'loi nhat|lai gop.*cao nhat', t):
-        return lambda e: e.top_products(period, k=1, metric='gross_profit').single()
+        return {'op': 'top_products', 'answer_type': 'string', 'period': period, 'metric': 'gross_profit', 'k': 1}
     if re.search(r'\blai gop\b', t) and not re.search(r'\bnao\b', t) and ctx.product(t) is None:
-        return lambda e: e.gross_profit(period)
+        return {'op': 'gross_profit', 'answer_type': 'number', 'period': period}
     return None
 
 
@@ -297,38 +315,51 @@ def sel_c8(t, ctx):
         return None
     match = ORDERS_BOUND.search(t)
     bounds = match and _bounds(match)
-    period = _one_month(t, ctx.periods)
+    period = _one_month(t)
     if not bounds or period is None:
         return None
     low, high = bounds
     percent = re.search(r'%|phan tram|ti le', t)
     if re.search(r'\bkhach\b', t) and not re.search(r'mat hang', t):
         if percent:
-            return lambda e: e.customer_share(period, low, high)
+            return {'op': 'customer_share', 'answer_type': 'percent', 'period': period,
+                    'min_orders': low, 'max_orders': high}
         if re.search(r'\b(bao nhieu|may|so|bn|bnhiu|nhieu|dem)\b', t):
-            return lambda e: e.customer_count(period, low, high)
+            return {'op': 'customer_count', 'answer_type': 'number', 'period': period,
+                    'min_orders': low, 'max_orders': high}
     if re.search(r'\bmat hang\b', t) and re.search(r'xuat hien|co mat|duoc mua', t) and high is None and not percent:
-        return lambda e: e.products_in_at_least(period, low)
+        return {'op': 'products_in_at_least', 'answer_type': 'number', 'period': period, 'min_orders': low}
     return None
 
 
 def sel_c9(t, ctx):
     if 'nhan vien' not in t:
         return None
-    period = _one_month(t, ctx.periods)
+    period = _one_month(t)
     if period is None:
         return None
     code = re.search(r'\bnhan vien ma (nv) ?(\d+)\b', t)
     if code and re.search(r'ban duoc|ban dc|tien|doanh thu|dthu', t) and not re.search(r'\bnao\b|so don|khach', t):
-        staff = f'NV{code[2]}'
-        return lambda e: e.revenue(period, Filters(staff=staff))
+        return {'op': 'revenue', 'answer_type': 'number', 'period': period, 'staff': f'NV{code[2]}'}
     if re.search(r'ban gioi nhat|nhan vien nao co (doanh thu|dthu) cao nhat', t):
-        return lambda e: e.top_staff(period, k=1).single()
+        return {'op': 'top_staff', 'answer_type': 'string', 'period': period, 'k': 1}
     return None
 
 
 SELECTORS = [('C1', sel_c1), ('C4', sel_c4), ('C3', sel_c3), ('C5', sel_c5), ('C6', sel_c6), ('C7', sel_c7),
              ('C8', sel_c8), ('C9', sel_c9), ('C2', sel_c2)]
+
+
+def select_spec(t, ctx):
+    """Bộ chọn đầu tiên nhận câu (đã chuẩn hoá) -> (loại, spec dict) hoặc (None, None)."""
+    for kind, selector in SELECTORS:
+        try:
+            spec = selector(t, ctx)
+        except (ValueError, UnsupportedRule):
+            spec = None
+        if spec:
+            return kind, spec
+    return None, None
 
 
 def _full_tables(cache):
@@ -368,24 +399,21 @@ def verify_extended(train_dir=Path('train'), cache_dir=Path('cache'), exclude=()
         engine, ctx = shops[bid]
         ctx.periods = Periods(rules, q['as_of_date'], calendar)
         t = legacy.norm_question(q['question'])
-        for kind, selector in SELECTORS:
-            try:
-                call = selector(t, ctx)
-            except (ValueError, UnsupportedRule):
-                call = None
-            if call:
-                break
-        else:
+        kind, spec = select_spec(t, ctx)
+        if spec is None:
             continue
         stat, gold = kinds[kind], golds[q['id']]
         stat['selected'] += 1
         row = {'id': q['id'], 'business_id': bid, 'kind': kind, 'question': q['question'],
-               'gold_type': gold['type'], 'gold': _gold_value(gold)}
+               'gold_type': gold['type'], 'gold': _gold_value(gold), 'spec': spec}
         try:
             if isinstance(engine, Exception):
                 raise engine
             engine.as_of = date.fromisoformat(q['as_of_date'])
-            answer = call(engine)
+            parsed, problem = parse_spec(spec)
+            if parsed is None:
+                raise ValueError(f'spec không hợp lệ: {problem}')
+            answer = execute(parsed, engine, ctx.periods, ctx.catalog)
             row['library'] = answer.to_submission(q['id'])
             status, reason = SCORER.score_one(gold, row['library'])
             if status == SCORER.CORRECT:
@@ -397,7 +425,7 @@ def verify_extended(train_dir=Path('train'), cache_dir=Path('cache'), exclude=()
             else:
                 stat['mismatched'] += 1
                 row['status'], row['reason'] = 'lech', reason
-        except (DataError, UnsupportedRule, ValueError, KeyError) as exc:
+        except (DataError, UnsupportedRule, ValueError, KeyError) as exc:   # gồm Ambiguous, Unsupported
             stat['errors'][type(exc).__name__] += 1
             row['status'], row['reason'] = 'loi', f'{type(exc).__name__}: {exc}'
         rows.append(row)

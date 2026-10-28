@@ -1,0 +1,90 @@
+{
+ "seed": 2026,
+ "rule": "Chia theo TIỆM trong từng nhóm mẫu file (surveys/DESIGN.md): khoảng 1/3 mỗi nhóm vào HOLDOUT, nhóm chỉ 1 tiệm để ở DEV. DEV là nguồn few-shot; HOLDOUT chỉ để chấm.",
+ "groups": {
+  "A": [
+   "biz_106",
+   "biz_108",
+   "biz_109",
+   "biz_119",
+   "biz_120",
+   "biz_128"
+  ],
+  "B": [
+   "biz_102",
+   "biz_103",
+   "biz_104",
+   "biz_121",
+   "biz_122"
+  ],
+  "C": [
+   "biz_112",
+   "biz_115",
+   "biz_116",
+   "biz_118",
+   "biz_130"
+  ],
+  "D": [
+   "biz_105",
+   "biz_117"
+  ],
+  "E": [
+   "biz_107",
+   "biz_113",
+   "biz_126"
+  ],
+  "F": [
+   "biz_101",
+   "biz_114",
+   "biz_125"
+  ],
+  "G": [
+   "biz_110"
+  ],
+  "H": [
+   "biz_111",
+   "biz_127",
+   "biz_129"
+  ],
+  "I": [
+   "biz_123"
+  ],
+  "J": [
+   "biz_124"
+  ]
+ },
+ "dev": [
+  "biz_101",
+  "biz_104",
+  "biz_105",
+  "biz_106",
+  "biz_107",
+  "biz_109",
+  "biz_110",
+  "biz_112",
+  "biz_113",
+  "biz_114",
+  "biz_115",
+  "biz_116",
+  "biz_119",
+  "biz_121",
+  "biz_122",
+  "biz_123",
+  "biz_124",
+  "biz_127",
+  "biz_128",
+  "biz_129"
+ ],
+ "holdout": [
+  "biz_102",
+  "biz_103",
+  "biz_108",
+  "biz_111",
+  "biz_117",
+  "biz_118",
+  "biz_120",
+  "biz_125",
+  "biz_126",
+  "biz_130"
+ ]
+}

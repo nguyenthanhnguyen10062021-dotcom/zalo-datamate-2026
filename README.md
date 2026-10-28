@@ -34,6 +34,8 @@ pip install -r requirements.txt
 | `python check_with_gold.py` | Đối chiếu bảng chuẩn với đáp án train → `gold_report.md` (cần chạy `load_all.py` trước) |
 | `python generalize_check.py` | Leave-one-group-out + tiệm mẫu file mới → `generalize_report.md` (~3 phút) |
 | `python verify_business.py` | Kiểm chứng thư viện nghiệp vụ trên tập câu train được bộ kiểm tra cũ chọn → `reports/business_verification.*` |
+| `python eval_agent.py --split holdout --out runs/holdout` | Đánh giá agent trên tiệm HOLDOUT, điểm thật bằng luật chấm BTC (cần server LLM, xem [docs/agent.md](docs/agent.md)) |
+| `python main.py --data <dir> --out <dir>` | Runner định dạng BTC → `<out>/submission.jsonl` + `run.log` |
 | `pytest tests/ evaluate/` | Unit test |
 
 ## Cấu trúc thư mục
@@ -58,6 +60,11 @@ tests/             unit test parser, viết tắt, suy luận từ giá trị
 business/          API nghiệp vụ bán hàng, rulebook và thời gian
 verify_business.py kiểm chứng thư viện nghiệp vụ trên tập câu chọn lọc
 ai_collaboration/  gói bàn giao và các vòng thảo luận với Gemini web
+agent/             câu hỏi -> spec JSON (LLM) -> business/ -> đáp án: spec, prompt, few-shot BM25, khớp tên, dispatcher
+config/            model.yaml (model, revision, sampling, Modal), split.json (tiệm DEV/HOLDOUT)
+modal_app/         server vLLM trên Modal (chỉ lúc dev)
+main.py            runner định dạng BTC
+eval_agent.py      đánh giá agent theo tiệm
 ```
 
 Hàm chính: `from loader import load_business; res = load_business("train/data/biz_101", "train/rulebook.md")`.
@@ -73,9 +80,15 @@ Kiểm chứng mới nhất ngày 2026-10-29: **255 test đạt**; thư viện n
 | 1 | `evaluate.py`: chấm điểm theo luật BTC | ✅ |
 | 2 | Loader về schema chuẩn (v0 + 2c: viết tắt, suy từ giá trị) | ✅ 409/409 câu khớp đáp án train (263 doanh thu/huỷ + 146 số lượng/ca) |
 | 3 | Thư viện hàm nghiệp vụ theo rulebook trên schema chuẩn | Thời gian/lịch Tết, doanh thu, số đơn, số lượng, tỷ lệ, xếp hạng; mở rộng: ngày/tháng cao nhất, chuỗi tháng, giá bán, hàng ế, lãi gộp, đếm khách, nhân viên, size, luật public; xem [API và giới hạn](docs/business.md) |
-| 4 | LLM (hiểu câu hỏi, sinh mapping cho mẫu file lạ) | |
-| 5 | Dự phòng + chiến lược abstain | |
+| 4 | LLM hiểu câu hỏi → spec JSON → business/ | v0: HOLDOUT **772/1027 (0,752/câu)**, v0.1 hậu kỳ 785; xem [docs/agent.md](docs/agent.md) |
+| 5 | Dự phòng + chiến lược abstain | v0: abstain khi spec lỗi / unsupported / luật thiếu / dữ liệu lỗi / tên mơ hồ / độ tin cậy thấp |
 | 6 | Đóng gói Docker | |
+
+## Model (khai báo theo luật thi)
+
+- Chính: **`Qwen/Qwen3.5-9B`**, revision `c202236235762e1c871ad0ccb60c8ee5ba337b9a` (Apache-2.0, phát hành 03/2026).
+- Backup: `Qwen/Qwen3-14B`, revision `40c069824f4251a91eefaf281ebe4c544efd3e18` (Apache-2.0). Đổi qua `config/model.yaml`, không đổi code.
+- Chỉ một model lúc suy luận; few-shot bằng BM25 thuần code. Serve bằng vLLM, `temperature=0`, `seed=0`, tắt thinking.
 
 ## Luật thi quan trọng
 

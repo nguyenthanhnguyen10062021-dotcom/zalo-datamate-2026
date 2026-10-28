@@ -1,0 +1,44 @@
+# Model suy luận. Đổi model = đổi `active`, không sửa code.
+# Luật thi: open-weight, tổng tham số mọi model lúc suy luận <= 15B, chạy offline.
+active: qwen35_9b
+
+models:
+  qwen35_9b:
+    id: Qwen/Qwen3.5-9B                                   # Apache-2.0, phát hành 03/2026
+    revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a     # ghim commit Hugging Face
+    dtype: bfloat16
+    max_model_len: 32768          # prompt <= 32K token (để backup 14B cũng chạy được)
+    # theo model card + vLLM recipe: chỉ phần ngôn ngữ (bỏ vision encoder), parser suy luận qwen3
+    serve_args: ["--language-model-only", "--reasoning-parser", "qwen3", "--enable-prefix-caching"]
+    chat_template_kwargs: {enable_thinking: false}         # tắt thinking khi tạo spec (model card)
+  qwen3_14b:                      # backup
+    id: Qwen/Qwen3-14B
+    revision: 40c069824f4251a91eefaf281ebe4c544efd3e18
+    dtype: bfloat16
+    max_model_len: 32768
+    serve_args: ["--reasoning-parser", "qwen3", "--enable-prefix-caching"]
+    chat_template_kwargs: {enable_thinking: false}
+
+sampling:                         # tái lập: greedy + seed cố định
+  temperature: 0.0
+  seed: 0
+  max_tokens: 600
+
+self_consistency:
+  temperature: 0.7
+  seeds: [1, 2, 3]
+
+client:
+  base_url_env: DATAMATE_LLM_BASE_URL     # dev: URL Modal; lúc thi: http://localhost:8000/v1 (vLLM local)
+  default_base_url: http://localhost:8000/v1
+  api_key_env: DATAMATE_LLM_API_KEY
+  timeout_s: 90
+  retries: 1
+
+modal:                            # chỉ dùng lúc dev
+  vllm_version: "0.32.0"
+  gpu: L40S                       # 48 GB: đủ cho 9B bf16 (và 14B bf16) với 32K context
+  usd_per_hour: 1.95              # bảng giá Modal 10/2026: L40S $0.000542/giây (chưa gồm CPU/RAM)
+  scaledown_window_s: 120         # scale-to-zero sau 2 phút không có request
+  max_concurrent_inputs: 64
+  max_containers: 1               # không tự nhân GPU khi hàng đợi dài (client chạy <= 48 luồng)
