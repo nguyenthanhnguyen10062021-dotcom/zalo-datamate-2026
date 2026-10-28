@@ -441,3 +441,47 @@ class SalesMetrics:
         pairs = list(zip(values,values[1:]))
         ok = all(b > a for a,b in pairs) if direction == 'increasing' else all(b < a for a,b in pairs)
         return Answer('boolean',ok)
+
+    @_answer
+    def price_on_date(self, product_id: str, day):
+        """§5 Giá bán X ngày D: đơn giá một đơn vị cơ bản, trước chiết khấu dòng, cả đơn huỷ/trả.
+        CHƯA CHẮC: nhiều mức giá khác nhau trong ngày -> DataError (rulebook không nói chọn mức nào)."""
+        self.rules.require('Giá bán X ngày D','mot don vi co ban','truoc chiet khau dong','ca dong cua don huy')
+        day = as_date(day)
+        self._range(DateRange(day,day))
+        if not len(self.lines):
+            raise _Unavailable('Không ghi dòng hàng')
+        if product_id not in set(self.products['ma_hang']):
+            raise _Unavailable('Không tìm thấy mã sản phẩm trong danh mục')
+        self._column(self.lines,'don_gia')
+        orders = self.orders.loc[self._dates.eq(pd.Timestamp(day)),'ma_don']
+        lines = self.lines[self.lines['ma_don'].isin(orders) & self.lines['ma_hang'].eq(product_id)
+                           & self.lines['loai_dong'].isin(('hang','topping'))]
+        if not len(lines):
+            raise _Unavailable('Không có dòng bán mặt hàng trong ngày')
+        qty, base = _values(lines,'so_luong'), _values(lines,'so_luong_co_ban')
+        if (qty == 0).any() or (base/qty <= 0).any():
+            raise DataError('Số lượng dòng bán không quy đổi được')
+        prices = {round(float(v),6) for v in _values(lines,'don_gia')*qty/base}
+        if len(prices) != 1:
+            raise DataError(f'Nhiều mức giá trong ngày: {sorted(prices)}')
+        return Answer('number',_number(Decimal(str(prices.pop())),self.rules.rounding_places('money')))
+
+    def _staff_orders(self, period, valid=True):
+        self._column(self.orders,'ma_nhan_vien')
+        orders = self._orders(period,Filters(),valid)
+        if orders['ma_nhan_vien'].isna().any():
+            raise DataError('Một số đơn thiếu nhân viên')
+        return orders
+
+    @_answer
+    def top_staff(self, period: DateRange, k: int = 5, metric: str = 'revenue'):
+        """§3 Nhân viên bán giỏi nhất: theo doanh thu (§1), không theo số đơn. Trả list mã nhân viên."""
+        if metric != 'revenue':
+            raise ValueError('metric must be revenue')
+        self._ranking_rules()
+        self.rules.require('Nhân viên bán giỏi nhất','theo doanh thu','khong theo so don')
+        orders = self._staff_orders(period)
+        revenue = self._order_revenue(orders,Filters())
+        grouped = {who:round(float(v),6) for who,v in revenue.groupby(orders['ma_nhan_vien']).sum().items()}
+        return self._rank(grouped,{who:who for who in grouped},k)

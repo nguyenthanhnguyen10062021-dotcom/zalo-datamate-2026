@@ -116,6 +116,45 @@ def test_best_period_day_month_and_ties(tables, ext_rules):
     assert e.best_period(DateRange('2025-01-01', '2025-01-31')).type == 'unanswerable'
 
 
+# C2 (đã có qua Filters) + C5 size + nhân viên --------------------------------------------------------
+
+def test_product_size_and_staff_filters(tables, ext_rules):
+    e = engine(tables, ext_rules)
+    assert e.revenue(MARCH, Filters(product_ids=('P1',))).answer == 120000
+    assert e.quantity(MARCH, Filters(size='M'), unit='ly').answer == 4
+    assert e.quantity(MARCH, Filters(size='L'), unit='ly').answer == 1        # '(l)' không phân biệt hoa thường
+    assert e.revenue(MARCH, Filters(size='m')).answer == 120000
+    with pytest.raises(UnsupportedRule):
+        e.quantity(MARCH, Filters(size='S'))
+    assert e.revenue(MARCH, Filters(staff='NV2')).answer == 150000
+    assert e.revenue(MARCH, Filters(staff='NV9')).type == 'unanswerable'
+
+
+def test_size_requires_rule(tables, rules):
+    with pytest.raises(UnsupportedRule):
+        engine(tables, rules).quantity(MARCH, Filters(size='M'))
+
+
+# C3 ------------------------------------------------------------------------------------------------
+
+def test_price_on_date(tables, ext_rules):
+    e = engine(tables, ext_rules)
+    assert e.price_on_date('P1', '2026-03-02').answer == 30000
+    assert e.price_on_date('P2', '2026-03-02').answer == 40000     # trước chiết khấu dòng
+    assert e.price_on_date('P1', '2026-03-03').answer == 32000     # dòng của đơn huỷ vẫn tính
+    assert e.price_on_date('P5', '2026-03-03').answer == 5000      # 120000 / 24 chai
+    assert e.price_on_date('P3', '2026-03-02').type == 'unanswerable'
+    assert engine(tables, ext_rules, '2026-03-02').price_on_date('P1', '2026-03-03').type == 'unanswerable'
+    tables['dong_hang'].loc[tables['dong_hang']['ma_don'].eq('O2'), 'don_gia'] = 31000
+    with pytest.raises(DataError):
+        engine(tables, ext_rules).price_on_date('P1', '2026-03-02')
+
+
+def test_price_rule_missing_is_unsupported(tables, rules):
+    with pytest.raises(UnsupportedRule):
+        engine(tables, rules).price_on_date('P1', '2026-03-02')
+
+
 # C4 ------------------------------------------------------------------------------------------------
 
 def test_revenue_series_and_monotonic(tables, ext_rules):
@@ -126,5 +165,14 @@ def test_revenue_series_and_monotonic(tables, ext_rules):
     assert e.is_monotonic([MARCH, FEB], 'decreasing').answer is True
     assert e.is_monotonic([FEB, FEB]).answer is False                          # bằng nhau không phải tăng
     assert e.revenue_series([DateRange('2025-01-01', '2025-01-31'), MARCH]).type == 'unanswerable'
+
+
+# C9 ------------------------------------------------------------------------------------------------
+
+def test_top_staff_by_revenue(tables, ext_rules):
+    e = engine(tables, ext_rules)
+    top = e.top_staff(MARCH, k=2)
+    assert top.answer == ['NV1', 'NV2']                            # 160000 > 150000
+    assert top.single().type == 'string' and top.single().answer == 'NV1'
 
 
