@@ -52,12 +52,55 @@ Thay đường dẫn cache bằng doanh nghiệp cần hỏi. Với public test,
 | `cancellation_rate(period)` | percent, mẫu số là mọi trạng thái |
 | `average_order_value(period, filters)` | number, làm tròn half-up về đồng |
 | `quantity(period, filters, unit=None)` | number, tổng số lượng đơn vị cơ bản |
-| `top_products(period, k=5, metric='quantity', filters=...)` | list tên hàng, metric quantity hoặc revenue |
+| `top_products(period, k=5, metric='quantity', filters=...)` | list tên hàng; metric `quantity`, `revenue`, `gross_profit` (§3 Hàng lời nhất), `orders` (số đơn có mặt hàng) |
 | `top_customers(period, k=5, metric='revenue')` | list tên khách, metric revenue hoặc orders |
 | `revenue_growth(period, comparison, filters)` | percent, (kỳ hỏi − kỳ so)/kỳ so |
 | `revenue_share(period, filters)` | percent, doanh thu bộ lọc/doanh thu cả shop |
 
-`Filters` hỗ trợ `product_ids` (tuple mã hàng), `product_group`, `channel`, `payment`, `customer_group`, `shift` (`sang`/`chieu`). Truyền mã/nhãn đúng trong schema chuẩn; việc khớp tên, alias và cách nói thuộc tầng hiểu câu hỏi. Bộ lọc sản phẩm áp lên dòng hàng; bộ lọc kênh/thanh toán/khách/ca áp lên đơn. Với AOV có bộ lọc sản phẩm, tử số là doanh thu các dòng được lọc và mẫu số là số đơn có các dòng đó.
+### API mở rộng
+
+| API | Kết quả | Luật (đọc lúc chạy) |
+|---|---|---|
+| `best_period(period, granularity='day'\|'month', metric='revenue'\|'orders', kind='max'\|'min', filters)` | date `YYYY-MM-DD` / `YYYY-MM` | §1, §9 bằng nhau. Ngày/tháng không có đơn trong khoảng dữ liệu = 0; bằng nhau lấy kỳ sớm hơn |
+| `revenue_series(periods, filters)` | list số theo đúng thứ tự `periods` | §1, §9 "list theo đúng thứ tự câu hỏi nêu" |
+| `is_monotonic(periods, direction='increasing'\|'decreasing', filters)` | boolean; bằng nhau không tính là tăng/giảm | §1 |
+| `price_on_date(product_id, day)` | number: đơn giá một đơn vị cơ bản, trước chiết khấu dòng, cả đơn huỷ/trả | §5 Giá bán X ngày D (**chỉ có ở rulebook train**) |
+| `slow_moving_products(period, as_list=False, filters)` | number, hoặc list tên theo mã tăng dần | §5 Mặt hàng không bán được trong kỳ (ế) |
+| `gross_profit(period, filters)` | number: doanh thu − Σ số lượng × giá vốn ghi trên dòng | §5 Lãi gộp |
+| `customer_count(period, min_orders=None, max_orders=None)` | number: khách đã mua có số đơn trong [min, max] (gồm hai đầu) | §1 Số đơn, §2 Quá N/Từ N, §3 Xác định khách |
+| `customer_share(period, min_orders=None, max_orders=None)` | percent trên số khách đã mua trong kỳ | như trên |
+| `products_in_at_least(period, n, filters)` | number: mặt hàng có mặt trong ≥ n đơn hợp lệ | §1 Số đơn, §3 Mặt hàng |
+| `top_staff(period, k=5)` | list mã nhân viên theo doanh thu | §3 Nhân viên bán giỏi nhất |
+| `Answer.single()` | list xếp hạng → string phần tử đầu (câu hỏi một đối tượng) | §9 |
+
+Số đơn có một mặt hàng (C8) và doanh thu/số lượng của một mặt hàng (C2) dùng API sẵn có: `order_count(period, Filters(product_ids=...))`, `revenue(...)`, `quantity(...)`.
+
+Với điều kiện số đơn, tầng hiểu câu hỏi đổi cách nói theo §2: "từ N trở lên", "ít nhất N", "≥ N" → `min_orders=N`; "quá/hơn/trên N" → `min_orders=N+1`; "dưới N" → `max_orders=N-1`.
+
+### Luật chỉ có trong rulebook public
+
+Mỗi API đòi đúng dòng luật bằng `Rulebook.require`. Chạy với rulebook train sẽ ra `UnsupportedRule`. Không có đáp án gold nên **chỉ kiểm bằng test tổng hợp**.
+
+| API | Dòng luật | Kết quả |
+|---|---|---|
+| `loyal_customers(period, k=1)` | Khách trung thành nhất | list tên khách, nhiều ngày có mua nhất |
+| `big_spender_customers(period, k=1)` | Khách sộp nhất | list tên khách, giá trị trung bình một đơn cao nhất; ngưỡng "từ N đơn" đọc từ luật |
+| `fickle_customers(period, k=1)` | Khách hay đổi ý nhất | list tên khách, nhiều đơn huỷ nhất |
+| `favorite_products(period, k=1, filters)` | Mặt hàng được ưa chuộng nhất | list tên hàng, có mặt trong nhiều đơn nhất |
+| `hardworking_staff(period, k=1)` | Nhân viên, thợ chăm chỉ nhất | list mã nhân viên, nhiều ngày làm việc nhất |
+| `busiest_day(period)` | Ngày đắt khách nhất | date, ngày nhiều đơn nhất |
+| `peak_hour(period)` | Giờ cao điểm | number, giờ bắt đầu khung một giờ nhiều đơn nhất |
+| `weekday_average(period, weekday, metric='revenue'\|'orders')` | Trung bình mỗi ngày thứ X của kỳ | number; chia cho số ngày thứ X trong kỳ (0 = thứ Hai), kể cả ngày không có đơn |
+
+### CHƯA CHẮC
+
+- `price_on_date`: nhiều mức giá khác nhau trong cùng ngày → `DataError`, vì rulebook không nói chọn mức nào.
+- `best_period(kind='min')`: ngày không có đơn trong khoảng dữ liệu được tính là 0. Kỳ bằng nhau: lấy kỳ sớm hơn (§9 "không có mã thì theo tên").
+- `slow_moving_products`: kỳ bắt đầu từ ngày đầu dữ liệu trở về trước → unanswerable, vì không có dữ liệu "trước kỳ".
+- `gross_profit`: dòng phí phục vụ không có giá vốn được tính giá vốn 0; dòng hàng/topping thiếu giá vốn → `DataError`.
+- `hardworking_staff`: ngày làm việc chỉ tính đơn hợp lệ (§1 Số đơn), bỏ đơn huỷ/trả. `peak_hour`: bằng nhau lấy giờ sớm hơn.
+
+`Filters` hỗ trợ `product_ids` (tuple mã hàng), `product_group`, `channel`, `payment`, `customer_group`, `shift` (`sang`/`chieu`), `size` (`M`/`L`: tên món kết thúc `(M)`/`(L)`, không phân biệt hoa thường, theo luật ngành cà phê) và `staff` (mã nhân viên ghi trên đơn). Truyền mã/nhãn đúng trong schema chuẩn; việc khớp tên, alias và cách nói thuộc tầng hiểu câu hỏi. Bộ lọc sản phẩm áp lên dòng hàng; bộ lọc kênh/thanh toán/khách/ca áp lên đơn. Với AOV có bộ lọc sản phẩm, tử số là doanh thu các dòng được lọc và mẫu số là số đơn có các dòng đó.
 
 Doanh thu gồm phí phục vụ/topping, không trừ voucher cấp đơn, không cộng ship/VAT. Xếp hạng và số lượng mặt hàng bỏ phí phục vụ, có topping. Hủy/trả loại cả đơn, đang giao vẫn tính. Khi không có bảng dòng hàng, chỉ doanh thu toàn đơn có thể dùng `tong_tien_hang`, không suy từ tiền đã thu hoặc tổng phải trả.
 
@@ -70,7 +113,7 @@ Doanh thu gồm phí phục vụ/topping, không trừ voucher cấp đơn, khô
 - Rulebook được đọc từ file người gọi truyền, có source và SHA256. Bản này kiểm tra các cụm điều khoản cần thiết cho thao tác; không phải bộ suy luận ngôn ngữ tự nhiên cho mọi cách viết hoặc mọi thay đổi của rulebook. Cần rà soát lại khi BTC cập nhật luật.
 - Đếm đơn/AOV/tỷ lệ hủy cần mã đơn thật (`co_ma_don`); mã nhân tạo của loader chỉ phục vụ nối dòng hàng.
 - `quantity(unit=None)` cộng số lượng cơ bản của mọi hàng; người gọi phải bảo đảm đó là phép cộng mà câu hỏi yêu cầu. Chỉ định `unit` để cộng riêng một đơn vị cơ bản.
-- Chưa hỗ trợ kho, nhập, nợ, lãi, lô/hạn dùng và toàn bộ luật ngành. Thiếu tính năng không đồng nghĩa dữ liệu unanswerable. Các bảng đó cần được loader chuẩn hóa trước.
+- Chưa hỗ trợ kho, nhập, nợ, lãi ròng, lô/hạn dùng và phần lớn luật ngành (đã có: size cà phê, lãi gộp từ giá vốn dòng). Thiếu tính năng không đồng nghĩa dữ liệu unanswerable. Các bảng đó cần được loader chuẩn hóa trước.
 - Thư viện dựa trên cache đã làm sạch; không khôi phục số lượng hoặc quan hệ mà loader ánh xạ sai. Test/kiểm tra loader vẫn cần thiết.
 
 ## Kiểm chứng
@@ -80,6 +123,6 @@ python -m pytest -q
 python verify_business.py --train train --cache cache --out reports/business_verification
 ```
 
-Verifier ghi `.json` và `.md`, dùng cùng bộ chọn câu bảo thủ của `check_with_gold.py`: báo tổng câu train, số được chọn, số bị bỏ qua, số lỗi, số khớp gold và phép tính cũ. Đây là kiểm chứng hồi quy trên tập con, không phải PA toàn bộ train. Chỉ công cụ kiểm chứng bên ngoài `business/` đọc gold.
+Verifier ghi `.json` và `.md`. Phần cũ dùng cùng bộ chọn câu bảo thủ của `check_with_gold.py`; phần mở rộng có bộ chọn regex riêng cho C1–C9, chấm bằng `evaluate.score_one` và in 5 câu lệch/lỗi đầu tiên mỗi loại. Phần cũ: báo tổng câu train, số được chọn, số bị bỏ qua, số lỗi, số khớp gold và phép tính cũ. Đây là kiểm chứng hồi quy trên tập con, không phải PA toàn bộ train. Chỉ công cụ kiểm chứng bên ngoài `business/` đọc gold.
 
 Baseline trước thay đổi: `reports/gold_before_business.md`, 263/263 câu doanh thu/hủy và 146/146 câu số lượng/ca. Test của thư viện dùng dữ liệu tổng hợp; file cuộc thi không được thêm vào Git.

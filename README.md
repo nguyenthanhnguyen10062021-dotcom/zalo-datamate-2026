@@ -66,13 +66,13 @@ Hàm chính: `from loader import load_business; res = load_business("train/data/
 
 Trao đổi với Gemini web hoặc LLM khác: xem [ai_collaboration/README.md](ai_collaboration/README.md). Gói bàn giao có bối cảnh, source snapshot, yêu cầu thảo luận và chỗ lưu phản hồi để Codex kiểm chứng.
 
-Kiểm chứng mới nhất ngày 2026-10-28: **219 test đạt, 1 test cũ bỏ qua**; thư viện nghiệp vụ khớp gold **409/409 câu đối chiếu được** trên tập chọn lọc, chưa phải PA toàn bộ train. Xem [phạm vi và bằng chứng](docs/validation.md).
+Kiểm chứng mới nhất ngày 2026-10-29: **244 test đạt**; thư viện nghiệp vụ phủ **863/3000 câu train** (bộ chọn regex trong verifier), khớp gold **844**. Đây là tập chọn lọc, chưa phải PA toàn bộ train. Xem [phạm vi và bằng chứng](docs/validation.md).
 
 | Bước | Nội dung | Trạng thái |
 |---|---|---|
 | 1 | `evaluate.py`: chấm điểm theo luật BTC | ✅ |
 | 2 | Loader về schema chuẩn (v0 + 2c: viết tắt, suy từ giá trị) | ✅ 409/409 câu khớp đáp án train (263 doanh thu/huỷ + 146 số lượng/ca) |
-| 3 | Thư viện hàm nghiệp vụ theo rulebook trên schema chuẩn | Bản đầu: thời gian/lịch Tết, doanh thu, số đơn, số lượng, tỷ lệ, xếp hạng; xem [API và giới hạn](docs/business.md) |
+| 3 | Thư viện hàm nghiệp vụ theo rulebook trên schema chuẩn | Thời gian/lịch Tết, doanh thu, số đơn, số lượng, tỷ lệ, xếp hạng; mở rộng: ngày/tháng cao nhất, chuỗi tháng, giá bán, hàng ế, lãi gộp, đếm khách, nhân viên, size, luật public; xem [API và giới hạn](docs/business.md) |
 | 4 | LLM (hiểu câu hỏi, sinh mapping cho mẫu file lạ) | |
 | 5 | Dự phòng + chiến lược abstain | |
 | 6 | Đóng gói Docker | |
