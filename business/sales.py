@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .periods import DateRange, as_date
-from .rules import Rulebook
+from .rules import Rulebook, UnsupportedRule
 
 
 class DataError(ValueError):
@@ -79,19 +79,30 @@ class SalesMetrics:
     """Use real order IDs for counts; retain synthetic IDs only for linking sales."""
 
     def __init__(self, tables: dict, rules: Rulebook, as_of_date):
+        if not isinstance(tables, dict) or not {'don_hang', 'dong_hang', 'mat_hang', 'cua_hang'}.issubset(tables):
+            raise DataError('Thiếu bảng chuẩn trong dữ liệu đầu vào')
+        if not all(isinstance(tables[name], pd.DataFrame) for name in ('don_hang','dong_hang','mat_hang')) or not isinstance(tables['cua_hang'], dict):
+            raise DataError('Sai kiểu bảng chuẩn trong dữ liệu đầu vào')
         self.rules, self.as_of = rules, as_date(as_of_date)
         self.orders = tables['don_hang']
         self.lines = tables['dong_hang']
         self.products = tables['mat_hang']
         self.meta = tables['cua_hang']
-        for frame, key in ((self.orders,'ma_don'), (self.products,'ma_hang')):
-            if key not in frame or frame[key].isna().any() or frame[key].duplicated().any():
-                raise DataError(f'Khóa {key} thiếu/trùng trong bảng chuẩn')
-        if len(self.lines) and ('ma_don' not in self.lines or not self.lines['ma_don'].isin(self.orders['ma_don']).all()):
-            raise DataError('Dòng hàng không nối được với đơn hàng')
+        if 'ma_don' not in self.orders or self.orders['ma_don'].isna().any() or self.orders['ma_don'].duplicated().any():
+            raise DataError('Khóa ma_don thiếu/trùng trong bảng chuẩn')
+        if 'ngay_dat' not in self.orders:
+            raise DataError('Ngày đặt thiếu/sai')
         self._dates = pd.to_datetime(self.orders['ngay_dat'], errors='coerce').dt.normalize()
         if self._dates.isna().any():
             raise DataError('Ngày đặt thiếu/sai')
+
+    def _validate_products(self):
+        if 'ma_hang' not in self.products or self.products['ma_hang'].isna().any() or self.products['ma_hang'].duplicated().any():
+            raise DataError('Khóa ma_hang thiếu/trùng trong bảng chuẩn')
+
+    def _validate_lines(self):
+        if len(self.lines) and ('ma_don' not in self.lines or not self.lines['ma_don'].isin(self.orders['ma_don']).all()):
+            raise DataError('Dòng hàng không nối được với đơn hàng')
 
     @classmethod
     def from_cache(cls, cache_dir: str | Path, rulebook_path: str | Path, as_of_date):
@@ -120,8 +131,6 @@ class SalesMetrics:
         start, end = self._range(period)
         selected = self.orders.loc[self._dates.between(start,end)]
         status = self._column(self.orders,'trang_thai')
-        if not selected['trang_thai'].isin(('hoan_thanh','dang_giao','huy','tra_hang')).all():
-            raise DataError('Trạng thái đơn thiếu/chưa nhận diện')
         if valid:
             self.rules.require('Đơn tính vào doanh thu', 'khong huy', 'khong tra hang', 'dang giao van tinh')
             selected = selected[~status.loc[selected.index].isin(('huy','tra_hang'))]
@@ -150,11 +159,14 @@ class SalesMetrics:
                 raise DataError('Một số đơn thiếu giờ đặt')
             minute = ts.dt.hour*60+ts.dt.minute
             selected = selected[minute.between(start_min,end_min-1)]
+        if not selected['trang_thai'].isin(('hoan_thanh','dang_giao','huy','tra_hang')).all():
+            raise DataError('Trạng thái đơn thiếu/chưa nhận diện')
         return selected
 
     def _line_sales(self, orders, filters: Filters, products_only=False):
         if not len(self.lines):
             raise _Unavailable('Không ghi dòng hàng')
+        self._validate_lines()
         self._column(self.lines,'loai_dong')
         lines = self.lines[self.lines['ma_don'].isin(orders['ma_don'])]
         if not orders['ma_don'].isin(lines['ma_don']).all():
@@ -166,12 +178,14 @@ class SalesMetrics:
         if filters.product_ids is not None:
             if isinstance(filters.product_ids, str):
                 raise ValueError('product_ids must be a sequence of IDs, not a string')
+            self._validate_products()
             unknown = set(filters.product_ids)-set(self.products['ma_hang'])
             if unknown:
                 raise _Unavailable('Không tìm thấy mã sản phẩm trong danh mục')
             lines = lines[lines['ma_hang'].isin(filters.product_ids)]
         if filters.product_group is not None:
             self.rules.require('Nhóm hàng','theo cot nhom hang','khong gop nhom khac ten')
+            self._validate_products()
             self._column(self.products,'nhom_hang')
             groups = self.products.set_index('ma_hang')['nhom_hang']
             mapped = lines['ma_hang'].map(groups)
@@ -190,6 +204,7 @@ class SalesMetrics:
         self._revenue_rule()
         orders = self._orders(period,filters,True)
         if len(self.lines):
+            self._validate_lines()
             self._column(self.lines,'thanh_tien')
             return _sum(self._line_sales(orders,filters),'thanh_tien')
         if filters.product_ids is not None or filters.product_group is not None:
@@ -223,11 +238,13 @@ class SalesMetrics:
         return Answer('number',self._count(period,filters,True))
 
     @_answer
-    def cancellation_rate(self, period: DateRange):
+    def cancellation_rate(self, period: DateRange, filters: Filters = Filters()):
+        if filters.product_ids is not None or filters.product_group is not None:
+            raise UnsupportedRule('Chưa hỗ trợ lọc sản phẩm cho tỷ lệ đơn hủy')
         if not self.meta.get('co_ma_don'):
             raise _Unavailable('Không xác định được số đơn')
         self.rules.require('Tỉ lệ đơn huỷ trong kỳ','moi don dat trong ky','moi trang thai','2 chu so')
-        orders = self._orders(period,Filters(),False)
+        orders = self._orders(period,filters,False)
         if not len(orders):
             raise _Unavailable('Không có đơn để tính tỷ lệ')
         return Answer('percent',_number(Decimal(int(orders['trang_thai'].eq('huy').sum()))/len(orders)*100,self.rules.rounding_places('percent')))
@@ -247,6 +264,7 @@ class SalesMetrics:
         self._column(self.lines,'so_luong_co_ban')
         lines = self._line_sales(orders,filters,True)
         if unit is not None:
+            self._validate_products()
             self._column(self.products,'don_vi_co_ban')
             base = self.products.set_index('ma_hang')['don_vi_co_ban']
             def unit_key(value):
@@ -281,6 +299,7 @@ class SalesMetrics:
         if metric not in ('quantity','revenue'):
             raise ValueError('metric must be quantity or revenue')
         self.rules.require('Mặt hàng','phi phuc vu','khong xep hang')
+        self._validate_products()
         if metric == 'quantity':
             self.rules.require('Bán chạy','so luong quy ve don vi co ban')
         else:
@@ -300,12 +319,14 @@ class SalesMetrics:
         return orders['la_khach_le'].fillna(True).astype(bool)
 
     @_answer
-    def top_customers(self, period: DateRange, k: int = 5, metric: str = 'revenue'):
+    def top_customers(self, period: DateRange, k: int = 5, metric: str = 'revenue', filters: Filters = Filters()):
         if metric not in ('revenue','orders'):
             raise ValueError('metric must be revenue or orders')
+        if filters.product_ids is not None or filters.product_group is not None:
+            raise UnsupportedRule('Chưa hỗ trợ lọc sản phẩm cho xếp hạng khách hàng')
         self._ranking_rules()
         self.rules.require('Xác định khách','ma khach','khach le','khong xep hang','ten ghi tren don')
-        orders = self._orders(period,Filters(),True)
+        orders = self._orders(period,filters,True)
         self._column(self.orders,'ten_khach')
         orders = orders[~self._walkins(orders)]
         key = 'ma_khach' if self.meta.get('co_ma_khach') else 'khach_key'
@@ -338,7 +359,8 @@ class SalesMetrics:
 
     @_answer
     def revenue_share(self, period: DateRange, filters: Filters):
-        self.rules.require('Doanh thu theo nhóm khách','doanh thu ca shop')
+        if filters.customer_group is not None:
+            self.rules.require('Doanh thu theo nhóm khách','doanh thu ca shop')
         numerator,denominator = self._revenue(period,filters),self._revenue(period,Filters())
         if denominator == 0:
             raise _Unavailable('Tổng doanh thu bằng 0, không tính được tỷ trọng')

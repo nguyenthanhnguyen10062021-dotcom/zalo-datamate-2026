@@ -188,3 +188,166 @@ def test_selected_missing_amount_is_data_error_not_unanswerable(tables,rules):
 def test_base_unit_matching_ignores_case(tables,rules,period):
     tables['mat_hang'].loc[:1,'don_vi_co_ban']='Ly'
     assert SalesMetrics(tables,rules,'2026-03-04').quantity(period,unit='ly').answer==2
+
+
+@pytest.mark.parametrize('name', ['don_hang', 'dong_hang', 'mat_hang', 'cua_hang'])
+@pytest.mark.parametrize('problem', ['missing', 'wrong_type'])
+def test_malformed_table_structure_is_data_error(tables, rules, name, problem):
+    if problem == 'missing':
+        del tables[name]
+    else:
+        tables[name] = None
+    with pytest.raises(DataError):
+        SalesMetrics(tables, rules, '2026-03-04')
+
+
+@pytest.mark.parametrize('tables', [None, []])
+def test_non_dictionary_input_is_data_error(tables, rules):
+    with pytest.raises(DataError):
+        SalesMetrics(tables, rules, '2026-03-04')
+
+
+def test_missing_order_date_column_is_data_error(tables, rules):
+    del tables['don_hang']['ngay_dat']
+    with pytest.raises(DataError, match='Ngày đặt'):
+        SalesMetrics(tables, rules, '2026-03-04')
+
+
+@pytest.mark.parametrize('problem', ['duplicate', 'missing_key', 'missing_column'])
+def test_catalog_errors_do_not_block_pure_order_metrics(tables, rules, period, problem):
+    if problem == 'duplicate':
+        tables['mat_hang'].loc[1, 'ma_hang'] = 'P1'
+    elif problem == 'missing_key':
+        tables['mat_hang'].loc[1, 'ma_hang'] = None
+    else:
+        del tables['mat_hang']['ma_hang']
+    engine = SalesMetrics(tables, rules, '2026-03-04')
+    assert engine.order_count(period).answer == 2
+    assert engine.cancelled_orders(period).answer == 1
+    assert engine.cancellation_rate(period).answer == 25
+    assert engine.top_customers(period, metric='orders').answer == ['Lan', 'Lan']
+
+
+@pytest.mark.parametrize('operation', ['top_products', 'quantity', 'product_ids', 'product_group'])
+def test_catalog_errors_still_block_product_dependencies(tables, rules, period, operation):
+    tables['mat_hang'].loc[1, 'ma_hang'] = 'P1'
+    engine = SalesMetrics(tables, rules, '2026-03-04')
+    with pytest.raises(DataError, match='ma_hang'):
+        if operation == 'top_products':
+            engine.top_products(period)
+        elif operation == 'quantity':
+            engine.quantity(period, unit='ly')
+        elif operation == 'product_ids':
+            engine.order_count(period, Filters(product_ids=('P1',)))
+        else:
+            engine.revenue(period, Filters(product_group='Đồ uống'))
+
+
+def test_orphan_lines_only_block_line_dependent_metrics(tables, rules, period):
+    tables['dong_hang'] = pd.concat([
+        tables['dong_hang'],
+        pd.DataFrame([['ORPHAN', 'P1', 'hang', 1, 50]], columns=tables['dong_hang'].columns),
+    ], ignore_index=True)
+    engine = SalesMetrics(tables, rules, '2026-03-04')
+    assert engine.order_count(period).answer == 2
+    assert engine.cancelled_orders(period).answer == 1
+    assert engine.cancellation_rate(period).answer == 25
+    assert engine.top_customers(period, metric='orders').answer == ['Lan', 'Lan']
+    for call in (
+        lambda: engine.revenue(period),
+        lambda: engine.average_order_value(period),
+        lambda: engine.quantity(period),
+        lambda: engine.top_products(period),
+        lambda: engine.top_customers(period, metric='revenue'),
+        lambda: engine.order_count(period, Filters(product_ids=('P1',))),
+    ):
+        with pytest.raises(DataError, match='Dòng hàng không nối được'):
+            call()
+
+
+def test_unknown_status_on_excluded_channel_does_not_block_query(tables, rules, period):
+    tables['don_hang'].loc[0, 'trang_thai'] = 'bad_status'
+    engine = SalesMetrics(tables, rules, '2026-03-04')
+    online = Filters(channel='online')
+    assert engine.revenue(period, online).answer == 100
+    assert engine.cancelled_orders(period, online).answer == 1
+    assert engine.cancellation_rate(period, online).answer == 33.33
+    assert engine.top_customers(period, filters=online).answer == ['Lan']
+    # The share denominator includes the whole shop, including the bad order.
+    with pytest.raises(DataError, match='Trạng thái đơn'):
+        engine.revenue_share(period, online)
+
+
+@pytest.mark.parametrize('channel', ['online', None])
+def test_unknown_status_not_proven_outside_channel_still_blocks(tables, rules, period, channel):
+    tables['don_hang'].loc[0, ['trang_thai', 'kenh_ban']] = ['bad_status', channel]
+    engine = SalesMetrics(tables, rules, '2026-03-04')
+    online = Filters(channel='online')
+    for call in (
+        lambda: engine.revenue(period, online),
+        lambda: engine.cancelled_orders(period, online),
+        lambda: engine.cancellation_rate(period, online),
+        lambda: engine.top_customers(period, filters=online),
+    ):
+        with pytest.raises(DataError):
+            call()
+
+
+@pytest.mark.parametrize('row,column,filters,expected', [
+    (2, 'kenh_ban', Filters(channel='online'), 100),
+    (3, 'hinh_thuc_tt', Filters(payment='cod'), 100),
+    (2, 'nhom_khach', Filters(customer_group='VIP'), 201),
+    (2, 'thoi_diem_dat', Filters(shift='chieu'), 100),
+])
+def test_known_cancelled_or_returned_orders_are_excluded_before_filters(
+    tables, rules, period, row, column, filters, expected,
+):
+    tables['don_hang'].loc[row, column] = None
+    assert SalesMetrics(tables, rules, '2026-03-04').revenue(period, filters).answer == expected
+
+
+@pytest.mark.parametrize('row', [2, 3])
+def test_cancellation_rate_retains_returned_and_cancelled_order_dependencies(tables, rules, period, row):
+    tables['don_hang'].loc[row, 'hinh_thuc_tt'] = None
+    engine = SalesMetrics(tables, rules, '2026-03-04')
+    with pytest.raises(DataError, match='hinh_thuc_tt'):
+        engine.cancellation_rate(period, Filters(payment='cod'))
+
+
+@pytest.mark.parametrize('metric', ['orders', 'revenue'])
+@pytest.mark.parametrize('channel,expected', [('online', 'Khách online'), ('tai_quan', 'Khách tại quán')])
+def test_customer_ranking_order_filters_preserve_positional_api(tables, rules, period, metric, channel, expected):
+    names = {'K1': 'Khách online', 'K2': 'Khách tại quán'}
+    tables['don_hang']['ten_khach'] = tables['don_hang']['ma_khach'].map(names)
+    engine = SalesMetrics(tables, rules, '2026-03-04')
+    assert engine.top_customers(period, 1, metric, Filters(channel=channel)).answer == [expected]
+
+
+@pytest.mark.parametrize('operation', ['cancellation_rate', 'top_customers'])
+@pytest.mark.parametrize('filters', [Filters(product_ids=('P1',)), Filters(product_group='Đồ uống')])
+def test_unsupported_product_filters_are_explicitly_rejected(tables, rules, period, operation, filters):
+    engine = SalesMetrics(tables, rules, '2026-03-04')
+    with pytest.raises(UnsupportedRule):
+        getattr(engine, operation)(period, filters=filters)
+
+
+@pytest.mark.parametrize('filters,expected', [
+    (Filters(product_group='Đồ uống'), 84.58),
+    (Filters(channel='online'), 49.75),
+])
+def test_non_customer_share_does_not_require_customer_group_rule(tables, rules, period, filters, expected):
+    no_customer_rule = Rulebook.from_text('\n'.join(
+        line for line in rules.text.splitlines() if not line.startswith('| Doanh thu theo nhóm khách |')
+    ))
+    engine = SalesMetrics(tables, no_customer_rule, '2026-03-04')
+    assert engine.revenue_share(period, filters).answer == expected
+    with pytest.raises(UnsupportedRule):
+        engine.revenue_share(period, Filters(customer_group='VIP'))
+
+
+def test_customer_share_denominator_keeps_walkin_revenue(tables, rules, period):
+    tables['don_hang'].loc[0, ['ma_khach', 'ten_khach', 'khach_key', 'nhom_khach']] = None
+    tables['don_hang'].loc[0, 'la_khach_le'] = True
+    assert SalesMetrics(tables, rules, '2026-03-04').revenue_share(
+        period, Filters(customer_group='VIP'),
+    ).answer == 49.75
