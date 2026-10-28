@@ -21,7 +21,8 @@ from pathlib import Path
 
 import verify_business as vb
 from agent.llm import Completion, load_config
-from agent.pipeline import Agent
+from agent.pipeline import ABSTAIN, Agent, consistent, post_check
+from agent.spec import parse_spec
 
 SCORER = vb.SCORER
 
@@ -39,6 +40,25 @@ class OracleLLM:
     def complete(self, messages, schema=None, temperature=None, seed=None):
         q = messages[-1]["content"].split("Câu hỏi: ", 1)[1].rsplit("\nTrả về spec JSON.", 1)[0]
         return Completion(json.dumps(self.specs.get(q, {"op": "unsupported"}), ensure_ascii=False), 0, 0, 0.0)
+
+
+def rescore(agent: Agent, rec: dict, sc: bool) -> dict:
+    """Tính lại đáp án từ spec LLM đã lưu (không gọi model): áp hậu kỳ + business/ hiện tại."""
+    q = {k: rec[k] for k in ("id", "business_id", "question", "as_of_date")}
+
+    def redo(att):
+        if att.get("spec") is None:
+            return att
+        spec, _ = parse_spec(att["spec"])
+        spec, problem = post_check(spec, q["question"])
+        keep = {k: att[k] for k in ("prompt_tokens", "completion_tokens", "llm_seconds", "fixed", "raw", "spec") if k in att}
+        if problem:
+            return {**keep, "submission": ABSTAIN, "reason": problem}
+        return {**keep, **agent.run_spec(q, spec)}
+    rec = {**rec, "greedy": redo(rec["greedy"]), "samples": [redo(x) for x in rec["samples"]]}
+    rec["final_a"] = rec["greedy"]["submission"]
+    rec["final_b"] = consistent(rec["greedy"], rec["samples"]) if sc else rec["final_a"]
+    return rec
 
 
 def category(q: dict, ctx_cache: dict, cache_dir: Path) -> str:
@@ -136,6 +156,8 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=32)
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--report-only", action="store_true")
+    ap.add_argument("--rescore-from", type=Path, default=None,
+                    help="tính lại từ records.jsonl của lượt khác (không gọi LLM)")
     args = ap.parse_args(argv)
 
     split = json.loads(Path("config/split.json").read_text(encoding="utf-8"))
@@ -153,6 +175,14 @@ def main(argv=None):
             if line.strip():
                 r = json.loads(line)
                 records[r["id"]] = r
+    if args.rescore_from is not None:
+        old = [json.loads(l) for l in (args.rescore_from / "records.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+        agent = Agent(load_config(), args.train, args.cache, args.bank, llm=OracleLLM(args.bank))
+        with rec_path.open("w", encoding="utf-8") as f:
+            for r in old:
+                r = rescore(agent, r, args.sc)
+                records[r["id"]] = r
+                f.write(json.dumps(r, ensure_ascii=False, default=str) + "\n")
     todo = [q for q in questions if q["id"] not in records]
     wall = None
     if todo and not args.report_only:

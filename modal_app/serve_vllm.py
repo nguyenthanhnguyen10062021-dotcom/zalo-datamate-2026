@@ -28,6 +28,7 @@ app = modal.App("datamate-vllm")
 
 
 @app.function(image=image, gpu=SERVE["gpu"], scaledown_window=SERVE["scaledown_window_s"], timeout=60 * 60,
+              max_containers=SERVE.get("max_containers", 1),
               volumes={"/root/.cache/huggingface": hf_cache, "/root/.cache/vllm": vllm_cache},
               secrets=[modal.Secret.from_name("datamate-vllm")])
 @modal.concurrent(max_inputs=SERVE["max_concurrent_inputs"])

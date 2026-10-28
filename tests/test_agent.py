@@ -142,3 +142,17 @@ def test_self_consistency(agent_env):
     rec = make(FakeLLM([MARCH, MARCH, other, MARCH])).answer(q, self_consistency=True)
     assert rec['final_a']['answer'] == 100000 and rec['final_b'] == {'type': 'abstain'}
     assert consistent({'submission': {'type': 'abstain'}}, []) == {'type': 'abstain'}
+
+
+def test_post_check_rules():
+    from agent.pipeline import post_check
+    top, _ = parse_spec({'op': 'top_customers', 'answer_type': 'list', 'period': {'kind': 'today'}, 'k': 1,
+                       'metric': 'revenue'})
+    assert post_check(top, 'khách nào mua nhiều nhất hôm nay')[0].answer_type == 'string'
+    series, _ = parse_spec({'op': 'revenue_series', 'answer_type': 'list',
+                            'periods': [{'kind': 'this_month'}, {'kind': 'this_month'}]})
+    assert post_check(series, 'doanh thu đơn zalo và đơn tại quầy tháng này')[1] == 'series_invalid'
+    grp, _ = parse_spec({**MARCH, 'product_group': 'dị ứng'})
+    assert post_check(grp, 'thuốc có hoạt chất Loratadin tháng 3/2026 bán bao nhiêu tiền')[1] == 'ungrounded_filter'
+    ch, _ = parse_spec({**MARCH, 'channel': 'tai_quay', 'staff': 'NV002'})
+    assert post_check(ch, 'tháng 3/2026 nhân viên mã NV002 bán tại quầy được bao nhiêu')[1] is None

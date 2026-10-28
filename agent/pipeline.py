@@ -22,6 +22,31 @@ from .resolve import Ambiguous, Catalog
 from .spec import json_schema, parse_spec
 
 ABSTAIN = {"type": "abstain"}
+RANKING_OPS = {"top_products", "top_customers", "top_staff", "loyal_customers", "big_spender_customers",
+               "fickle_customers", "favorite_products", "hardworking_staff"}
+LABEL_FIELDS = ("product_group", "channel", "payment", "customer_group", "staff")
+
+
+def post_check(spec, question: str):
+    """Kiểm tra hậu kỳ, tổng quát (v0.1). Trả (spec đã chỉnh, lý do abstain hoặc None).
+    - xếp hạng: k=1 -> string, k>1 -> list (§9: câu hỏi một đối tượng lấy phần tử đầu);
+    - revenue_series: >= 2 kỳ, không trùng nhau (hỏi một kỳ là op khác, hai bộ lọc khác nhau chưa có API);
+    - nhãn lọc (nhóm, kênh, thanh toán, nhóm khách, nhân viên) phải có mặt trong câu hỏi: LLM không được tự thêm."""
+    from check_with_gold import norm_question
+    if spec.op in RANKING_OPS and spec.k is not None:
+        spec = spec.model_copy(update={"answer_type": "string" if spec.k == 1 else "list"})
+    if spec.op == "revenue_series":
+        keys = [p.model_dump_json() for p in spec.periods or []]
+        if len(keys) < 2 or len(set(keys)) < len(keys):
+            return spec, "series_invalid"
+    text = f" {norm_question(question)} "
+    for field in LABEL_FIELDS:
+        value = getattr(spec, field)
+        if value:
+            words = norm_question(str(value).replace("_", " ")).split()
+            if not words or not all(f" {w} " in text for w in words):
+                return spec, "ungrounded_filter"
+    return spec, None
 
 
 class Shop:
@@ -89,6 +114,9 @@ class Agent:
         if spec is None:
             return {**out, "submission": ABSTAIN, "reason": "spec_invalid", "detail": problem}
         out["spec"] = spec.model_dump(exclude_none=True)
+        spec, problem = post_check(spec, q["question"])
+        if problem:
+            return {**out, "submission": ABSTAIN, "reason": problem}
         return {**out, **self.run_spec(q, spec)}
 
     def run_spec(self, q: dict, spec) -> dict:

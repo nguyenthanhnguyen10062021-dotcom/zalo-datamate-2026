@@ -41,3 +41,4 @@ modal:                            # chỉ dùng lúc dev
   usd_per_hour: 1.95              # bảng giá Modal 10/2026: L40S $0.000542/giây (chưa gồm CPU/RAM)
   scaledown_window_s: 120         # scale-to-zero sau 2 phút không có request
   max_concurrent_inputs: 64
+  max_containers: 1               # không tự nhân GPU khi hàng đợi dài (client chạy <= 48 luồng)
