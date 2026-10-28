@@ -22,7 +22,11 @@ import warnings
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from loader.parsers import is_null  # noqa: E402
 
 SPLITS = [("train", Path("train")), ("public_test", Path("public_test"))]
 SALES_ROLES = ("line", "order", "product", "conversion")
@@ -38,6 +42,15 @@ COVER_COLS = {
 }
 
 
+def json_value(v):
+    """Giá trị numpy/pandas -> kiểu JSON thật (bool/số/null); còn lại mới thành chuỗi."""
+    if is_null(v):
+        return None
+    if isinstance(v, np.generic):
+        return v.item()
+    return str(v)
+
+
 def to_parquet(df: pd.DataFrame, path: Path) -> None:
     """Ghi parquet; cột object lẫn kiểu -> số nếu được, không thì chuỗi."""
     df = df.copy()
@@ -51,8 +64,8 @@ def to_parquet(df: pd.DataFrame, path: Path) -> None:
             if len(nonnull) and num.notna().all() and not nonnull.map(lambda v: isinstance(v, str)).any():
                 df[c] = pd.to_numeric(df[c], errors="coerce")
             else:
-                df[c] = df[c].map(lambda v: None if v is None or (isinstance(v, float) and v != v) else str(v)
-                                  ).astype("string")
+                # ô rỗng (None/NaN/pd.NA/NaT) giữ null thật, không thành chuỗi "<NA>"/"nan"
+                df[c] = df[c].map(lambda v: None if is_null(v) else str(v)).astype("string")
     df.to_parquet(path, index=False)
 
 
@@ -108,7 +121,7 @@ def process(shop_dir: str, split: str, split_root: str, cache_root: str) -> dict
     cache.mkdir(parents=True, exist_ok=True)
     for name in ("don_hang", "dong_hang", "mat_hang", "quy_doi_don_vi", "khach_hang"):
         to_parquet(res[name], cache / f"{name}.parquet")
-    (cache / "cua_hang.json").write_text(json.dumps(res["cua_hang"], ensure_ascii=False, indent=1, default=str),
+    (cache / "cua_hang.json").write_text(json.dumps(res["cua_hang"], ensure_ascii=False, indent=1, default=json_value),
                                          encoding="utf-8")
     maps = mapping_records(res)
     (cache / "mapping.json").write_text(json.dumps(maps, ensure_ascii=False, indent=1), encoding="utf-8")

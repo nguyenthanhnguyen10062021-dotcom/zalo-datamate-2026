@@ -35,7 +35,7 @@ from .mapping import (CONVERSION_CONCEPTS, DATE_CONCEPTS, LINE_CONCEPTS, NON_SAL
                       build_dictionaries, default_train_readmes)
 from .infer import (Inference, base_quantity, datetime_roles, key_overlap, ledger_columns, line_discount,
                     order_balance, order_id, qty_price_amount)
-from .parsers import (HOAN_THANH, HUY, TRA_HANG, clean_str, col_key, combine_status, is_walkin, line_kind,
+from .parsers import (HOAN_THANH, HUY, TRA_HANG, clean_str, col_key, combine_status, is_null, is_walkin, line_kind,
                       name_key, nk, normalize_channel, normalize_payment, normalize_status, parse_quantity,
                       split_phone, split_topping, status_from_text)
 from .raw import RawTable, fill_down_raw, read_raw_tables, type_table
@@ -630,7 +630,7 @@ def build_customers(tms: list[TableMap]) -> pd.DataFrame:
             sp = df["ten_khach"].map(split_phone)
             df["ten_khach"] = [n for n, _p in sp]
             ph = pd.Series([p for _n, p in sp], index=df.index)
-            df["sdt"] = df["sdt"].map(lambda v: None if v is None or v != v else str(v)) if "sdt" in df else ph
+            df["sdt"] = df["sdt"].map(lambda v: None if is_null(v) else str(v)) if "sdt" in df else ph
             df["sdt"] = df["sdt"].fillna(ph)
         parts.append(df)
     cols = ["ma_khach", "ten_khach", "sdt", "nhom_khach", "dia_chi", "nguon"]
@@ -827,7 +827,7 @@ def build_sales(tms: list[TableMap], idx: ProductIndex, recs: dict, quy_doi: pd.
         orders["hinh_thuc_tt_goc"] = orders["hinh_thuc_tt"]
         orders["hinh_thuc_tt"] = orders["hinh_thuc_tt"].map(normalize_payment)
     if "sdt" in orders:          # SĐT / địa chỉ ghi ngay trên đơn
-        orders["sdt_khach"] = orders["sdt"].map(lambda v: None if v is None or v != v else str(v))
+        orders["sdt_khach"] = orders["sdt"].map(lambda v: None if is_null(v) else str(v))
     if "dia_chi" in orders:
         orders["dia_chi_khach"] = orders["dia_chi"]
     if "kenh_ban" in orders:
