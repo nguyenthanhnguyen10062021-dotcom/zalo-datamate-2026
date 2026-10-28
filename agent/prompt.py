@@ -35,7 +35,10 @@ Trường khác (để null nếu không dùng):
 - granularity: day|month; kind: max|min; direction: increasing|decreasing.
 - min_orders / max_orders: số đơn GỒM hai đầu. "từ N trở lên", "ít nhất N", ">= N" -> min_orders=N;
   "quá/hơn/trên N" -> min_orders=N+1; "dưới N" -> max_orders=N-1.
-- weekday: 0=thứ Hai ... 6=Chủ nhật."""
+- weekday: 0=thứ Hai ... 6=Chủ nhật.
+- prescription: true = thuốc kê đơn, false = hàng không kê đơn ("trừ thuốc kê đơn ra"); dùng với revenue hoặc prescription_share.
+- active_ingredient: hoạt chất đúng như câu hỏi (thuốc phối hợp "A + B" là MỘT loại riêng, giữ nguyên chuỗi).
+- days: số ngày N của price_increase_effect; period phải là {"kind":"date",...} = ngày tăng giá D."""
 
 # Ví dụ TỰ VIẾT (không lấy từ train/public): mỗi op chính một ví dụ.
 SYNTHETIC = [
@@ -74,6 +77,19 @@ SYNTHETIC = [
     ("Khách nhóm sỉ mua bao nhiêu tiền trong tháng 6/2026?",
      {"op": "revenue", "answer_type": "number", "period": {"kind": "month", "month": 6, "year": 2026},
       "customer_group": "sỉ"}),
+    ("Thuốc kê đơn chiếm bao nhiêu % doanh thu tháng 6/2026?",
+     {"op": "prescription_share", "answer_type": "percent", "period": {"kind": "month", "month": 6, "year": 2026},
+      "prescription": True}),
+    ("Trừ thuốc kê đơn ra, tháng 2/2026 các mặt hàng còn lại bán được bao nhiêu tiền?",
+     {"op": "revenue", "answer_type": "number", "period": {"kind": "month", "month": 2, "year": 2026},
+      "prescription": False}),
+    ("Thuốc có hoạt chất Cetirizin tháng 3/2026 bán được bao nhiêu tiền?",
+     {"op": "revenue", "answer_type": "number", "period": {"kind": "month", "month": 3, "year": 2026},
+      "active_ingredient": "Cetirizin"}),
+    ("Từ ngày 05/02/2026, Nước suối 500ml tăng giá lên 6.000đ. 7 ngày kể từ ngày đó so với 7 ngày ngay trước, "
+     "số chai bán ra thay đổi bao nhiêu %?",
+     {"op": "price_increase_effect", "answer_type": "percent", "product": "Nước suối 500ml", "days": 7,
+      "period": {"kind": "date", "day": 5, "month": 2, "year": 2026}}),
     ("Đến hết hôm nay khách còn nợ bao nhiêu tiền?", {"op": "unsupported"}),
     ("Nhân viên nào phục vụ khách vui vẻ nhất?", {"op": "unanswerable", "answer_type": "unanswerable"}),
 ]

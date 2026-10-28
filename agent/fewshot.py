@@ -21,8 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 UNSUPPORTED_RE = re.compile(
     r"\bno\b|cong no|tra no|thu no|mua chiu|thieu tien|ton kho|trong kho|con lai may|con ton|het hang|nhap hang|"
-    r"nhap vao|phieu nhap|gia nhap|nha cung cap|het han|han dung|\blo\b|dot giao|dot hang|tang gia|doi gia|lai rong|"
-    r"chi phi|bao hanh|hoat chat|ke don|tra gop|may cu|ton theo|gia tri hang")
+    r"nhap vao|phieu nhap|gia nhap|nha cung cap|het han|han dung|\blo\b|dot giao|dot hang|lai rong|"
+    r"chi phi|bao hanh|tra gop|may cu|ton theo|gia tri hang")
 UNANSWERABLE_RE = re.compile(r"tay nghe|tan tam|lanh nghe|\bkhen\b|nen uong|moi lan may|khach nu|khach nam\b|"
                              r"thoi tiet|dep nhat|ngon nhat|hai long")
 

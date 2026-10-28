@@ -114,6 +114,7 @@ EXT_KINDS = {
     'C1': 'ngày/tháng doanh thu cao nhất', 'C2': 'doanh thu một mặt hàng', 'C3': 'giá bán mặt hàng ngày D',
     'C4': 'doanh thu nhiều tháng / tăng liên tục', 'C5': 'số ly size M/L', 'C6': 'số mặt hàng ế',
     'C7': 'lãi gộp', 'C8': 'đếm khách / mặt hàng theo số đơn', 'C9': 'nhân viên',
+    'P1': 'thuốc kê đơn / không kê đơn (tiền, %)', 'P2': 'doanh thu theo hoạt chất', 'P3': 'hiệu ứng tăng giá',
 }
 MONTH_TOKEN = re.compile(r'(?<![\d/])(\d{1,2})/(\d{4})\b')
 DATE_TOKEN = re.compile(r'\b(\d{1,2})/(\d{1,2})/(\d{4})\b')
@@ -137,6 +138,8 @@ class _Ctx:
         self.base = {c: u for c, u in zip(products['ma_hang'], products['don_vi_co_ban']) if isinstance(u, str)}
         self.display = {c: n for c, n in zip(products['ma_hang'], products['ten_hang']) if isinstance(n, str)}
         self.catalog = Catalog(tables)
+        thuoc = tables.get('thuoc')
+        self.ingredients = sorted({str(v) for v in thuoc['hoat_chat'].dropna()}) if thuoc is not None else []
         self.periods = None
 
     def product(self, t):
@@ -332,6 +335,48 @@ def sel_c8(t, ctx):
     return None
 
 
+def sel_p1(t, ctx):
+    if 'ke don' not in t or re.search(r'khach|nhom|mat hang nao|nao', t):
+        return None
+    period = _one_month(t)
+    if period is None:
+        return None
+    rx = not re.search(r'\b(khong|hong|hok|ko|hk|k) ke don|tru thuoc ke don', t)
+    if re.search(r'%|phan tram|ti le|chiem', t):
+        return {'op': 'prescription_share', 'answer_type': 'percent', 'period': period, 'prescription': rx}
+    if re.search(r'tien|dthu|doanh thu|thu duoc|\bban\b', t):
+        return {'op': 'revenue', 'answer_type': 'number', 'period': period, 'prescription': rx}
+    return None
+
+
+def sel_p2(t, ctx):
+    if 'hoat chat' not in t or not re.search(r'tien|dthu|doanh thu', t):
+        return None
+    period = _one_month(t)
+    if period is None:
+        return None
+    found = [v for v in ctx.ingredients
+             if re.search(rf'hoat chat {re.escape(legacy.norm_question(v))}(?! \+)(?= |$)', t)]
+    if len(found) != 1:
+        return None
+    return {'op': 'revenue', 'answer_type': 'number', 'period': period, 'active_ingredient': found[0]}
+
+
+def sel_p3(t, ctx):
+    if not re.search(r'tang gia|doi gia|len gia', t):
+        return None
+    dates, found = DATE_TOKEN.findall(t), ctx.product(t)
+    if len(dates) != 1 or found is None or len(found[1]) != 1:
+        return None
+    days = re.findall(r'\b(\d+) ngay\b', t)
+    base = ctx.base.get(found[1][0])
+    if len(days) < 2 or len(set(days)) != 1 or not base or f' {legacy.norm_question(base)} ' not in f' {t} ':
+        return None
+    d, m, y = map(int, dates[0])
+    return {'op': 'price_increase_effect', 'answer_type': 'percent', 'product': _name(ctx, found[1]),
+            'days': int(days[0]), 'period': {'kind': 'date', 'day': d, 'month': m, 'year': y}}
+
+
 def sel_c9(t, ctx):
     if 'nhan vien' not in t:
         return None
@@ -346,7 +391,7 @@ def sel_c9(t, ctx):
     return None
 
 
-SELECTORS = [('C1', sel_c1), ('C4', sel_c4), ('C3', sel_c3), ('C5', sel_c5), ('C6', sel_c6), ('C7', sel_c7),
+SELECTORS = [('P1', sel_p1), ('P2', sel_p2), ('P3', sel_p3), ('C1', sel_c1), ('C4', sel_c4), ('C3', sel_c3), ('C5', sel_c5), ('C6', sel_c6), ('C7', sel_c7),
              ('C8', sel_c8), ('C9', sel_c9), ('C2', sel_c2)]
 
 
@@ -364,6 +409,9 @@ def select_spec(t, ctx):
 
 def _full_tables(cache):
     tables = {name: pd.read_parquet(cache/f'{name}.parquet') for name in ('don_hang', 'dong_hang', 'mat_hang')}
+    for name in ('thuoc', 'bang_gia'):
+        if (cache/f'{name}.parquet').exists():
+            tables[name] = pd.read_parquet(cache/f'{name}.parquet')
     tables['cua_hang'] = json.loads((cache/'cua_hang.json').read_text(encoding='utf-8'))
     return tables
 

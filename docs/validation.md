@@ -1,16 +1,18 @@
-# Trạng thái kiểm chứng ngày 2026-10-29 (sau khi gộp sửa loader #3)
+# Trạng thái kiểm chứng ngày 2026-10-29 (đợt 1: thuốc + bảng giá)
 
-Chạy trên macOS / Python 3.14, nhánh `nguyen/business-ext`, cache do `load_all.py` tạo (loader không đổi so với `main`).
+Chạy trên macOS / Python 3.14, nhánh `nguyen/thuoc-banggia` (xếp trên `nguyen/agent-v0`), cache do `load_all.py` tạo lại sau khi thêm bảng `thuoc`, `bang_gia`.
 
 | Kiểm tra | Kết quả |
 |---|---|
-| `python -m pytest -q -rs` | 255 passed, 0 skipped (test chấm điểm trên `train/answers.jsonl` đã chạy được) |
+| `python -m pytest -q -rs` | 276 passed, 0 skipped (test chấm điểm trên `train/answers.jsonl` đã chạy được) |
 | `python -m compileall -q business verify_business.py` | Exit 0 |
 | `git diff --check` | Exit 0 |
 | `python verify_business.py` — bộ chọn cũ | khớp gold 409/409, khớp phép tính cũ 409/409, 0 lỗi (không đổi) |
-| `python verify_business.py` — bộ chọn mở rộng C1–C9 | khớp 446/446 |
+| `python verify_business.py` — bộ chọn mở rộng C1–C9 | khớp 446/446 (không đổi) |
+| `python verify_business.py` — loại mới P1 (kê đơn), P2 (hoạt chất), P3 (tăng giá) | khớp 44/44, 40/40, 38/38 |
+| `python check_with_gold.py` | 263/263 + 146/146 (không đổi) |
 
-**API hiện có phủ được 863/3000 câu train (chọn được), khớp 855** (bộ cũ 409/417, trong đó 8 câu bộ cũ bỏ qua; mở rộng 446/446).
+**API hiện có phủ được 985/3000 câu train (chọn được), khớp 977** (bộ cũ 409/417, trong đó 8 câu bộ cũ bỏ qua; mở rộng 568/568).
 
 ## Bộ chọn mở rộng theo loại
 
@@ -27,6 +29,9 @@ Bộ chọn là regex bảo thủ, chỉ nằm trong `verify_business.py` để 
 | C7 | lãi gộp (cửa hàng, hàng lời nhất) | 12 | 12 | 0 | 0 |
 | C8 | đếm khách / mặt hàng theo số đơn | 46 | 46 | 0 | 0 |
 | C9 | nhân viên (doanh thu theo mã, bán giỏi nhất) | 13 | 13 | 0 | 0 |
+| P1 | thuốc kê đơn / không kê đơn (tiền, %) | 44 | 44 | 0 | 0 |
+| P2 | doanh thu theo hoạt chất | 40 | 40 | 0 | 0 |
+| P3 | hiệu ứng tăng giá | 38 | 38 | 0 | 0 |
 
 ### C8: trước 35/46, sau khi sửa loader 46/46
 

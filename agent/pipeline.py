@@ -24,7 +24,7 @@ from .spec import json_schema, parse_spec
 ABSTAIN = {"type": "abstain"}
 RANKING_OPS = {"top_products", "top_customers", "top_staff", "loyal_customers", "big_spender_customers",
                "fickle_customers", "favorite_products", "hardworking_staff"}
-LABEL_FIELDS = ("product_group", "channel", "payment", "customer_group", "staff")
+LABEL_FIELDS = ("product_group", "channel", "payment", "customer_group", "staff", "active_ingredient")
 
 
 def post_check(spec, question: str):
@@ -55,6 +55,9 @@ class Shop:
     def __init__(self, cache_dir: Path, rules: Rulebook):
         import pandas as pd
         tables = {n: pd.read_parquet(cache_dir / f"{n}.parquet") for n in ("don_hang", "dong_hang", "mat_hang")}
+        for n in ("thuoc", "bang_gia"):
+            if (cache_dir / f"{n}.parquet").exists():
+                tables[n] = pd.read_parquet(cache_dir / f"{n}.parquet")
         tables["cua_hang"] = json.loads((cache_dir / "cua_hang.json").read_text(encoding="utf-8"))
         self.meta = tables["cua_hang"]
         self.catalog = Catalog(tables)

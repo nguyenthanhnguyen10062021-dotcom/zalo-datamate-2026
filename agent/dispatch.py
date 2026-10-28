@@ -98,7 +98,9 @@ def to_filters(s: Spec, cat: Catalog) -> Filters:
         payment=cat.payment(s.payment) if s.payment else None,
         customer_group=cat.customer_group(s.customer_group) if s.customer_group else None,
         shift=s.shift, size=s.size,
-        staff=cat.staff_code(s.staff) if s.staff else None)
+        staff=cat.staff_code(s.staff) if s.staff else None,
+        prescription=s.prescription,
+        active_ingredient=cat.active_ingredient(s.active_ingredient) if s.active_ingredient else None)
 
 
 def execute(s: Spec, engine: SalesMetrics, periods: Periods, cat: Catalog) -> Answer:
@@ -149,6 +151,13 @@ def execute(s: Spec, engine: SalesMetrics, periods: Periods, cat: Catalog) -> An
         a = engine.slow_moving_products(period, as_list=s.answer_type == "list", filters=f)
     elif op == "gross_profit":
         a = engine.gross_profit(period, f)
+    elif op == "prescription_share":
+        a = engine.prescription_share(period, s.prescription)
+    elif op == "price_increase_effect":
+        ids = cat.product_ids(s.product)
+        if len(ids) != 1:
+            raise Unsupported("tên hàng ứng với nhiều mã")
+        a = engine.price_increase_effect(ids[0], period.start, s.days)
     elif op == "customer_count":
         a = engine.customer_count(period, s.min_orders, s.max_orders)
     elif op == "customer_share":
