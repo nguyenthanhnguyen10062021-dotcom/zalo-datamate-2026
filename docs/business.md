@@ -95,10 +95,22 @@ Mỗi API đòi đúng dòng luật bằng `Rulebook.require`. Chạy với rule
 ### CHƯA CHẮC
 
 - `price_on_date`: nhiều mức giá khác nhau trong cùng ngày → `DataError`, vì rulebook không nói chọn mức nào.
-- `best_period(kind='min')`: ngày không có đơn trong khoảng dữ liệu được tính là 0. Kỳ bằng nhau: lấy kỳ sớm hơn (§9 "không có mã thì theo tên").
+- `best_period(kind='min')`: ngày không có đơn trong khoảng dữ liệu được tính là 0. Kỳ bằng nhau: lấy kỳ sớm hơn (§9 "không có mã thì theo tên"). Train không có câu nào kiểm chứng biến thể này → kết quả mang `confidence='low'`.
 - `slow_moving_products`: kỳ bắt đầu từ ngày đầu dữ liệu trở về trước → unanswerable, vì không có dữ liệu "trước kỳ".
 - `gross_profit`: dòng phí phục vụ không có giá vốn được tính giá vốn 0; dòng hàng/topping thiếu giá vốn → `DataError`.
-- `hardworking_staff`: ngày làm việc chỉ tính đơn hợp lệ (§1 Số đơn), bỏ đơn huỷ/trả. `peak_hour`: bằng nhau lấy giờ sớm hơn.
+- `hardworking_staff`: ngày làm việc chỉ tính đơn hợp lệ, bỏ đơn huỷ/trả. Lý do: nhất quán với định nghĩa "số đơn" ở §1 ("chỉ tính đơn không huỷ, không trả"). Phiếu bảo hành không phải đơn huỷ/trả nên vẫn được tính, đúng như rulebook public ghi "kể cả phiếu bảo hành".
+- `peak_hour`: bằng nhau lấy giờ sớm hơn.
+- Mọi API C10 (luật chỉ có ở rulebook public, không có gold) trả `confidence='low'`.
+
+### Độ tin cậy (`Answer.confidence`)
+
+`Answer` có thêm trường `confidence`: `'normal'` (mặc định) hoặc `'low'`. `'low'` nghĩa là cách tính chưa có câu train nào kiểm chứng; tầng agent có thể dựa vào đó để abstain (sai bị −1, bỏ trống được 0). Trường này **không** ghi vào `to_submission`. `single()` giữ nguyên độ tin cậy của list gốc. Kết quả unanswerable do thiếu dữ liệu không bị hạ độ tin cậy.
+
+| API | confidence |
+|---|---|
+| `best_period(kind='min')` | low |
+| `loyal_customers`, `big_spender_customers`, `fickle_customers`, `favorite_products`, `hardworking_staff`, `busiest_day`, `peak_hour`, `weekday_average` | low |
+| các API còn lại | normal (đã có câu train khớp gold, hoặc là bản gốc đã kiểm chứng 409/409) |
 
 `Filters` hỗ trợ `product_ids` (tuple mã hàng), `product_group`, `channel`, `payment`, `customer_group`, `shift` (`sang`/`chieu`), `size` (`M`/`L`: tên món kết thúc `(M)`/`(L)`, không phân biệt hoa thường, theo luật ngành cà phê) và `staff` (mã nhân viên ghi trên đơn). Truyền mã/nhãn đúng trong schema chuẩn; việc khớp tên, alias và cách nói thuộc tầng hiểu câu hỏi. Bộ lọc sản phẩm áp lên dòng hàng; bộ lọc kênh/thanh toán/khách/ca áp lên đơn. Với AOV có bộ lọc sản phẩm, tử số là doanh thu các dòng được lọc và mẫu số là số đơn có các dòng đó.
 
@@ -106,7 +118,7 @@ Doanh thu gồm phí phục vụ/topping, không trừ voucher cấp đơn, khô
 
 ## Kết quả thiếu dữ liệu và giới hạn
 
-- `Answer(type, answer, reason)` và `to_submission(question_id)` tạo JSON object; chưa phải runner xuất toàn bộ submission.
+- `Answer(type, answer, reason, confidence)` và `to_submission(question_id)` tạo JSON object; chưa phải runner xuất toàn bộ submission.
 - Không có loại thông tin cần thiết, ngoài khoảng dữ liệu, hoặc mẫu số bằng 0: `Answer('unanswerable', reason=...)`.
 - Dữ liệu chuẩn có khóa trùng, ngày/status sai, giá trị liên quan thiếu một phần: `DataError`. Tầng agent cần sửa mapping hoặc abstain; không tự đổi lỗi này thành đáp án 0.
 - `UnsupportedRule`: điều khoản được dùng thiếu hoặc khác các mẫu mà bản này hỗ trợ. Cần bổ sung implementation/kiểm thử, hoặc agent abstain. Đây không phải kết luận câu hỏi không có đáp án trong dữ liệu.
