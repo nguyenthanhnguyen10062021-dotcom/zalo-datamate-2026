@@ -31,6 +31,28 @@ Codex sẽ kiểm tra đề xuất với code, rulebook và test, ghi kết qu�
 
 Thư viện nghiệp vụ bán hàng đã có bản đầu. Cần review giới hạn hiện tại và chọn cách xây tầng hiểu câu hỏi gọi thư viện: kế hoạch JSON có kiểm tra, sinh code, hay cách kết hợp. Đây là đề bài thảo luận; chưa chốt triển khai tầng NLU.
 
+**Cập nhật 2026-10-29:** đã nhận phản hồi Gemini và hoàn tất [review của Codex](rounds/001_business_to_nlu/CODEX_REVIEW.md). Để thảo luận tiếp, gửi Gemini [CODEX_REPLY_TO_GEMINI.md](rounds/001_business_to_nlu/CODEX_REPLY_TO_GEMINI.md) kèm [TRAIN_METADATA.md](rounds/001_business_to_nlu/TRAIN_METADATA.md). Có thể đính kèm CODEX_REVIEW.md nếu cần đầy đủ căn cứ. Đây là các file local mới; handoff ngày 2026-10-28 vẫn giữ làm snapshot lịch sử, chưa bao gồm review này.
+
+Đã nhận và kiểm chứng [GEMINI_RESPONSE_02.md](rounds/001_business_to_nlu/GEMINI_RESPONSE_02.md), giữ nguyên nội dung người dùng copy. Kết quả ở [CODEX_REVIEW_02.md](rounds/001_business_to_nlu/CODEX_REVIEW_02.md). Lượt tiếp theo: gửi [CODEX_REPLY_TO_GEMINI_02.md](rounds/001_business_to_nlu/CODEX_REPLY_TO_GEMINI_02.md) cùng review 02, dùng [GEMINI_PROMPT_03.md](rounds/001_business_to_nlu/GEMINI_PROMPT_03.md), nhận file `GEMINI_RESPONSE_03.md`.
+
+**Lượt 03:** đã kiểm chứng [GEMINI_RESPONSE_03.md](rounds/001_business_to_nlu/GEMINI_RESPONSE_03.md). Gửi [CODEX_REPLY_TO_GEMINI_03.md](rounds/001_business_to_nlu/CODEX_REPLY_TO_GEMINI_03.md) cùng [CODEX_REVIEW_03.md](rounds/001_business_to_nlu/CODEX_REVIEW_03.md), dùng [GEMINI_PROMPT_04.md](rounds/001_business_to_nlu/GEMINI_PROMPT_04.md), nhận `GEMINI_RESPONSE_04.md`. Đã thống nhất phạm vi baseline nhỏ; các patch API và executor vẫn chưa triển khai.
+
+**Cập nhật sau lượt 04:** đã kiểm chứng [GEMINI_RESPONSE_04.md](rounds/001_business_to_nlu/GEMINI_RESPONSE_04.md) trên baseline và các bản ứng viên tách biệt. Gói mới gồm [thư Codex](rounds/001_business_to_nlu/CODEX_REPLY_TO_GEMINI_04.md), [review 04](rounds/001_business_to_nlu/CODEX_REVIEW_04.md) và [diff Codex đã sửa](rounds/001_business_to_nlu/CODEX_BUSINESS_PATCH_04.diff); dùng [prompt 05](rounds/001_business_to_nlu/GEMINI_PROMPT_05.md), nhận `GEMINI_RESPONSE_05.md`. Diff chưa áp dụng vào production.
+
+**Trạng thái code mới nhất:** đã áp dụng bản sửa và commit tại [`c567b29`](https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/commit/c567b29); thêm 39 ca kiểm thử, full suite đạt 258 passed, 1 skipped, verifier đạt 409/409. Xem [hồ sơ triển khai](rounds/001_business_to_nlu/CODEX_IMPLEMENTATION_04.md) để có phạm vi thay đổi. Các gói handoff/review trước đó là snapshot lịch sử; khi trao đổi tiếp cần kèm cập nhật này và source/test tại commit mới.
+
+## Quyền chủ động kiểm chứng và trao đổi
+
+Từ 2026-10-29, người dùng yêu cầu Codex tự động kiểm chứng các đề xuất kỹ thuật của Gemini và coi đây là cuộc trao đổi kỹ thuật giữa hai bên. Khi có phản hồi mới, Codex tự đọc source, chạy thử nghiệm/test phù hợp, phản biện, ghi kết luận và chuẩn bị lượt tiếp theo; không dừng lại hỏi người dùng duyệt từng nhận định hoặc chọn thay chi tiết kỹ thuật. Luôn phân biệt đề xuất, quyết định kỹ thuật và thay đổi đã thực thi. Việc trao đổi hiện vẫn qua file; chưa có cầu nối tự gửi/nhận với Gemini web.
+
+## Yêu cầu Gemini xuất file ở các lượt sau
+
+Theo yêu cầu của người dùng, mỗi prompt tiếp theo cần yêu cầu Gemini đính kèm toàn bộ phản hồi dưới dạng file Markdown UTF-8 tải xuống được. Ví dụ cho lượt phản hồi tiếp theo:
+
+> Hãy tạo và đính kèm file `GEMINI_RESPONSE_05.md` chứa toàn bộ phản hồi bằng Markdown UTF-8, có tiêu đề, đoạn văn, danh sách, bảng và khối code dễ đọc. Đầu file ghi vòng 001, lượt phản hồi 05, ngày và các file nguồn đã đọc. Nếu không thể tạo file tải xuống, hãy xuất toàn bộ nội dung trong một khối code bao bằng bốn dấu backtick, nhãn markdown, để tôi lưu thành file. Không chỉ gửi bản tóm tắt và không tuyên bố đã tạo file nếu chưa có đính kèm.
+
+Tăng số lượt cho các phản hồi tiếp theo; lưu file mới cùng thư mục vòng thảo luận, không ghi đè phản hồi cũ. [Mẫu yêu cầu thảo luận](templates/DISCUSSION_REQUEST.md) đã có phần hướng dẫn xuất file này. Không sửa prompt hoặc handoff lịch sử chỉ để cập nhật định dạng phản hồi.
+
 ## Duy trì qua nhiều vòng
 
 - Mở vòng mới theo tên `002_<chu_de>`, `003_<chu_de>`; giữ vòng cũ để tra lại lý do quyết định.

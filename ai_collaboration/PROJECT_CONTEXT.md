@@ -1,5 +1,7 @@
 # Bối cảnh project DataMate
 
+**Cập nhật triển khai 2026-10-29:** bản sửa sau review Gemini lượt 04 đã được áp dụng vào code chính tại commit [`c567b29`](https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/commit/c567b29); thêm 39 ca kiểm thử, full suite đạt 258 passed, 1 skipped và verifier đạt 409/409. Xem [CODEX_IMPLEMENTATION_04.md](rounds/001_business_to_nlu/CODEX_IMPLEMENTATION_04.md) và [validation hiện hành](../docs/validation.md) để có phạm vi thay đổi. Phần snapshot ngày 2026-10-28 dưới đây và `GEMINI_HANDOFF.md` giữ vai trò hồ sơ lịch sử, không bao gồm bản sửa mới.
+
 Snapshot cập nhật ngày **2026-10-28**, timezone Asia/Saigon. Code nghiệp vụ, test và tài liệu đã commit tại `1c89252` trên nhánh `VuongNguyen`. Gói trao đổi này được commit kế tiếp trên cùng nhánh. SHA256 của nội dung từng file (UTF-8, chuẩn hóa xuống dòng LF) được đính kèm trong `GEMINI_HANDOFF.md`.
 
 Repo: https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/tree/VuongNguyen

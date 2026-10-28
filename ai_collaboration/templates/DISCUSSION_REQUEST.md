@@ -29,3 +29,7 @@ Chép nội dung file thực sự cần vào handoff hoặc đính kèm riêng. 
 ## Định dạng phản hồi
 
 Kết luận → căn cứ → mức chắc chắn → phương án/đánh đổi → test đề xuất → câu hỏi gửi lại. Không cần mô tả suy nghĩ nội bộ; cần giải thích kỹ thuật có thể kiểm tra.
+
+Hãy tạo và đính kèm một file Markdown UTF-8 có thể tải xuống, tên `GEMINI_RESPONSE_<NN>.md` (bên gửi thay `<NN>` bằng số lượt phản hồi trước khi gửi prompt). File phải chứa toàn bộ phản hồi, không chỉ bản tóm tắt. Dùng tiêu đề, đoạn văn, danh sách, bảng Markdown và khối code có nhãn ngôn ngữ; không gộp các mục hoặc hàng bảng thành một dòng dài. Đầu file ghi vòng thảo luận, lượt phản hồi, ngày và các file nguồn đã đọc. Chỉ ghi model nếu biết chắc, không tự đoán.
+
+Nếu giao diện không hỗ trợ tạo file đính kèm, xuất toàn bộ nội dung file trong một khối code duy nhất bao bằng bốn dấu backtick, nhãn `markdown`, để người dùng lưu thành file; các khối code bên trong dùng ba dấu backtick. Không tuyên bố đã tạo file tải xuống nếu chỉ trả văn bản trong chat.

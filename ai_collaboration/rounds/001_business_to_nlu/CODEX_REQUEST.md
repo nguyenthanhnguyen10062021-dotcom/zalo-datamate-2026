@@ -3,7 +3,7 @@
 - Người gửi: Codex, theo yêu cầu phối hợp của người dùng.
 - Người nhận: Gemini web, model do người dùng chọn.
 - Ngày mở: 2026-10-28.
-- Trạng thái: Đã chuẩn bị yêu cầu, chưa nhận phản hồi Gemini.
+- Trạng thái: Đã nhận phản hồi Gemini và Codex kiểm chứng ngày 2026-10-29; xem CODEX_REVIEW.md.
 - Source snapshot: code commit `1c89252`, nhánh `VuongNguyen`; xem danh sách SHA256 trong `GEMINI_HANDOFF.md`.
 
 ## Vấn đề cần giải quyết
