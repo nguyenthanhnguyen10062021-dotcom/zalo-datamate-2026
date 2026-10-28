@@ -309,21 +309,32 @@ class SalesMetrics:
     @_answer
     def top_products(self, period: DateRange, k: int = 5, metric: str = 'quantity', filters: Filters = Filters()):
         self._ranking_rules()
-        if metric not in ('quantity','revenue'):
-            raise ValueError('metric must be quantity or revenue')
+        if metric not in ('quantity','revenue','gross_profit','orders'):
+            raise ValueError('metric must be quantity, revenue, gross_profit or orders')
         self.rules.require('Mặt hàng','phi phuc vu','khong xep hang')
         if metric == 'quantity':
             self.rules.require('Bán chạy','so luong quy ve don vi co ban')
+        elif metric == 'orders':
+            self._need_order_ids()
+            self.rules.require('Số đơn','khong huy','so don co mot mat hang')
         else:
             self._revenue_rule()
+        if metric == 'gross_profit':
+            self.rules.require('Hàng lời nhất','tong lai gop')
         orders = self._orders(period,filters,True)
         lines = self._line_sales(orders,filters,True)
-        column = 'so_luong_co_ban' if metric == 'quantity' else 'thanh_tien'
-        _values(lines,column)
         if lines['ma_hang'].isna().any():
             raise DataError('Dòng hàng thiếu mã hàng')
-        grouped = {key:_sum(group,column) for key,group in lines.groupby('ma_hang')}
-        return self._rank(grouped,self.products.set_index('ma_hang')['ten_hang'].to_dict(),k)
+        if metric == 'gross_profit':
+            profit = self._line_profit(lines)
+            grouped = {key:sum(group,Decimal(0)) for key,group in profit.groupby(lines['ma_hang'])}
+        elif metric == 'orders':
+            grouped = lines.groupby('ma_hang')['ma_don'].nunique().to_dict()
+        else:
+            column = 'so_luong_co_ban' if metric == 'quantity' else 'thanh_tien'
+            _values(lines,column)
+            grouped = {key:_sum(group,column) for key,group in lines.groupby('ma_hang')}
+        return self._rank(grouped,self._product_names(),k)
 
     def _walkins(self, orders):
         if self.meta.get('co_ma_khach'):
@@ -396,6 +407,18 @@ class SalesMetrics:
         self._column(self.orders,'tong_tien_hang')
         return _values(orders,'tong_tien_hang').astype(float)
 
+    def _line_profit(self, lines):
+        """Lãi gộp từng dòng (§5): thành tiền − số lượng × giá vốn ghi trên dòng (theo đơn vị bán)."""
+        self.rules.require('Lãi gộp','doanh thu','gia von ghi tren dong ban','mot don vi ban','khong tu tinh lai gia von')
+        self._column(self.lines,'gia_von_dong')
+        merchandise = lines[lines['loai_dong'].isin(('hang','topping'))]
+        if merchandise['gia_von_dong'].isna().any():
+            raise DataError('Một số dòng bán thiếu giá vốn')
+        revenue = _values(lines,'thanh_tien')
+        cost = pd.Series(0.0,index=lines.index)
+        cost.loc[merchandise.index] = _values(merchandise,'so_luong')*_values(merchandise,'gia_von_dong')
+        return pd.Series([Decimal(str(round(r-c,6))) for r,c in zip(revenue,cost)],index=lines.index,dtype=object)
+
     @_answer
     def best_period(self, period: DateRange, granularity: str = 'day', metric: str = 'revenue',
                     kind: str = 'max', filters: Filters = Filters()):
@@ -466,6 +489,39 @@ class SalesMetrics:
         if len(prices) != 1:
             raise DataError(f'Nhiều mức giá trong ngày: {sorted(prices)}')
         return Answer('number',_number(Decimal(str(prices.pop())),self.rules.rounding_places('money')))
+
+    @_answer
+    def slow_moving_products(self, period: DateRange, as_list: bool = False, filters: Filters = Filters()):
+        """§5 Hàng ế: mặt hàng đã từng bán trước kỳ (đơn hợp lệ) nhưng trong kỳ không có đơn hợp lệ nào.
+        Không có dữ liệu trước kỳ -> unanswerable (không biết hàng nào 'đã từng bán')."""
+        self.rules.require('Mặt hàng không bán được trong kỳ (ế)','da tung ban truoc ky','trong ky khong co don nao')
+        self.rules.require('Mặt hàng','phi phuc vu','khong dem')
+        start, _ = self._range(period)
+        first = pd.Timestamp(as_date(self.meta['ngay_bat_dau_du_lieu']))
+        if pd.Timestamp(period.start) <= first:
+            raise _Unavailable('Không có dữ liệu trước kỳ hỏi')
+        before = self._orders(DateRange(first.date(),(start-pd.Timedelta(days=1)).date()),filters,True)
+        sold_before = set(self._line_sales(before,filters,True)['ma_hang'])
+        sold_now = set(self._line_sales(self._orders(period,filters,True),filters,True)['ma_hang'])
+        if any(pd.isna(x) for x in sold_before | sold_now):
+            raise DataError('Dòng hàng thiếu mã hàng')
+        slow = sorted(sold_before - sold_now, key=str)
+        if not as_list:
+            return Answer('number',len(slow))
+        self._ranking_rules()
+        names = self._product_names()
+        return Answer('list',[names[x] for x in slow])
+
+    @_answer
+    def gross_profit(self, period: DateRange, filters: Filters = Filters()):
+        """§5 Lãi gộp: doanh thu (§1) − Σ số lượng × giá vốn ghi trên dòng bán. Không có giá vốn dòng -> unanswerable."""
+        self._revenue_rule()
+        orders = self._orders(period,filters,True)
+        if not len(self.lines):
+            raise _Unavailable('Không ghi dòng hàng')
+        self._column(self.lines,'thanh_tien')
+        profit = self._line_profit(self._line_sales(orders,filters))
+        return Answer('number',_number(sum(profit,Decimal(0)),self.rules.rounding_places('money')))
 
     def _staff_orders(self, period, valid=True):
         self._column(self.orders,'ma_nhan_vien')
