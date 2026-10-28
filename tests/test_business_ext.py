@@ -218,6 +218,37 @@ def test_top_staff_by_revenue(tables, ext_rules):
     assert top.single().type == 'string' and top.single().answer == 'NV1'
 
 
+# C10 -----------------------------------------------------------------------------------------------
+
+def test_public_only_rules(tables, public_rules):
+    e = engine(tables, public_rules)
+    assert e.loyal_customers(MARCH).answer == ['An']                       # 3 ngày
+    assert e.big_spender_customers(MARCH).answer == ['An']                 # chỉ An có ≥ 3 đơn
+    assert e.fickle_customers(MARCH, k=2).answer == ['An', 'Bình']         # 1-1, theo mã
+    assert e.favorite_products(MARCH).answer == ['Cà phê (M)']
+    assert e.hardworking_staff(MARCH).answer == ['NV1']                    # 3 ngày (bỏ đơn huỷ/trả)
+    assert e.busiest_day(MARCH).answer == '2026-03-02'
+    peak = e.peak_hour(MARCH)
+    assert peak.type == 'number' and peak.answer == 8
+    assert e.weekday_average(MARCH, 0).answer == 32000                     # 160000 / 5 thứ Hai
+    assert e.weekday_average(MARCH, 0, metric='orders').answer == 0.6
+    assert e.weekday_average(MARCH, 1).answer == 30000
+
+
+def test_big_spender_threshold_read_from_rule(tables, ext_rules):
+    text = EXT_RULES + PUBLIC_ONLY.replace('từ 3 đơn', 'từ 4 đơn')
+    assert engine(tables, Rulebook.from_text(text)).big_spender_customers(MARCH).type == 'unanswerable'
+
+
+@pytest.mark.parametrize('call', [
+    lambda e: e.loyal_customers(MARCH), lambda e: e.big_spender_customers(MARCH),
+    lambda e: e.fickle_customers(MARCH), lambda e: e.favorite_products(MARCH),
+    lambda e: e.hardworking_staff(MARCH), lambda e: e.busiest_day(MARCH), lambda e: e.peak_hour(MARCH),
+    lambda e: e.weekday_average(MARCH, 0),
+])
+def test_public_only_rules_unsupported_without_rows(tables, ext_rules, call):
+    with pytest.raises(UnsupportedRule):
+        call(engine(tables, ext_rules))
 
 
 def test_customer_count_needs_no_names_when_codes_exist(tables, ext_rules):

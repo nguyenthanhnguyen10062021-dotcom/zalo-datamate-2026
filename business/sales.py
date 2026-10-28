@@ -385,6 +385,7 @@ class SalesMetrics:
         if denominator == 0:
             raise _Unavailable('Tổng doanh thu bằng 0, không tính được tỷ trọng')
         return Answer('percent',_number(numerator/denominator*100,self.rules.rounding_places('percent')))
+
     # ---- Mở rộng: kỳ tốt nhất, chuỗi kỳ, giá bán, hàng ế, lãi gộp, đếm khách/mặt hàng, nhân viên ----
 
     def _need_order_ids(self):
@@ -608,3 +609,99 @@ class SalesMetrics:
         revenue = self._order_revenue(orders,Filters())
         grouped = {who:round(float(v),6) for who,v in revenue.groupby(orders['ma_nhan_vien']).sum().items()}
         return self._rank(grouped,{who:who for who in grouped},k)
+
+    # ---- Luật chỉ có trong rulebook public: mỗi API đòi đúng dòng luật, thiếu -> UnsupportedRule ----
+
+    @_answer
+    def loyal_customers(self, period: DateRange, k: int = 1):
+        """Khách trung thành nhất: nhiều ngày có mua (đơn hợp lệ) nhất trong kỳ."""
+        self.rules.require('Khách trung thành nhất','nhieu ngay co mua nhat')
+        self._ranking_rules()
+        orders, key, labels = self._customer_orders(period)
+        days = self._dates.loc[orders.index]
+        return self._rank(days.groupby(orders[key]).nunique().to_dict(),labels,k)
+
+    @_answer
+    def big_spender_customers(self, period: DateRange, k: int = 1):
+        """Khách sộp nhất: giá trị trung bình một đơn cao nhất, chỉ xét khách có từ N đơn trở lên (N đọc từ luật)."""
+        rule = folded(self.rules.require('Khách sộp nhất','gia tri trung binh mot don'))
+        found = re.search(r'tu (\d+) don tro len',rule)
+        if not found:
+            raise UnsupportedRule('Không đọc được ngưỡng số đơn của luật khách sộp')
+        self._ranking_rules()
+        orders, key, labels = self._customer_orders(period)
+        revenue = self._order_revenue(orders,Filters())
+        stats = pd.DataFrame({'who':orders[key],'v':revenue}).groupby('who')['v'].agg(['sum','size'])
+        stats = stats[stats['size'] >= int(found[1])]
+        grouped = {who:Decimal(str(round(row['sum'],6)))/int(row['size']) for who,row in stats.iterrows()}
+        return self._rank(grouped,labels,k)
+
+    @_answer
+    def fickle_customers(self, period: DateRange, k: int = 1):
+        """Khách hay đổi ý nhất: nhiều đơn huỷ nhất trong kỳ."""
+        self.rules.require('Khách hay đổi ý nhất','nhieu don huy nhat')
+        self.rules.require('Đơn bị huỷ','trang thai huy')
+        self._ranking_rules()
+        orders, key, labels = self._customer_orders(period,valid=False)
+        cancelled = orders[orders['trang_thai'].eq('huy')]
+        return self._rank(cancelled.groupby(key).size().to_dict(),labels,k)
+
+    @_answer
+    def favorite_products(self, period: DateRange, k: int = 1, filters: Filters = Filters()):
+        """Mặt hàng được ưa chuộng nhất: có mặt trong nhiều đơn (hợp lệ) nhất."""
+        self.rules.require('Mặt hàng được ưa chuộng nhất','nhieu don nhat')
+        return self.top_products(period,k=k,metric='orders',filters=filters)
+
+    @_answer
+    def hardworking_staff(self, period: DateRange, k: int = 1):
+        """Nhân viên chăm chỉ nhất: nhiều ngày làm việc (ngày có ít nhất một đơn hợp lệ của người đó) nhất.
+        CHƯA CHẮC: luật không nói rõ đơn huỷ/trả có tính là ngày làm việc; ở đây theo §1 Số đơn (bỏ huỷ, trả)."""
+        self.rules.require('Nhân viên, thợ chăm chỉ nhất','nhieu ngay lam viec nhat','ngay co it nhat mot don')
+        self._ranking_rules()
+        orders = self._staff_orders(period)
+        grouped = self._dates.loc[orders.index].groupby(orders['ma_nhan_vien']).nunique().to_dict()
+        return self._rank(grouped,{who:who for who in grouped},k)
+
+    @_answer
+    def busiest_day(self, period: DateRange):
+        """Ngày đắt khách nhất: ngày có nhiều đơn (hợp lệ) nhất."""
+        self.rules.require('Ngày đắt khách nhất','nhieu don nhat')
+        return self.best_period(period,granularity='day',metric='orders',kind='max')
+
+    @_answer
+    def peak_hour(self, period: DateRange):
+        """Giờ cao điểm: khung một giờ tròn theo giờ tạo đơn có nhiều đơn nhất; trả giờ bắt đầu (number).
+        Bằng nhau: giờ sớm hơn (CHƯA CHẮC, rulebook chỉ nói xếp theo mã/tên)."""
+        self.rules.require('Giờ cao điểm','mot gio tron','gio tao don','gio bat dau khung')
+        self._need_order_ids()
+        self.rules.require('Số đơn','khong huy','khong tra')
+        self._column(self.orders,'thoi_diem_dat')
+        orders = self._orders(period,Filters(),True)
+        times = pd.to_datetime(orders['thoi_diem_dat'],errors='coerce')
+        if times.isna().any():
+            raise DataError('Một số đơn thiếu giờ đặt')
+        if not len(times):
+            raise _Unavailable('Không có đơn hợp lệ trong kỳ')
+        counts = times.dt.hour.value_counts()
+        return Answer('number',int(min(counts.index,key=lambda h:(-counts[h],h))))
+
+    @_answer
+    def weekday_average(self, period: DateRange, weekday: int, metric: str = 'revenue'):
+        """Trung bình mỗi ngày thứ X (weekday 0 = thứ Hai … 6 = Chủ nhật): chia cho số ngày thứ X trong kỳ,
+        kể cả ngày không có đơn. Kỳ được cắt theo khoảng dữ liệu và hôm nay như mọi phép tính khác."""
+        if type(weekday) is not int or not 0 <= weekday <= 6 or metric not in ('revenue','orders'):
+            raise ValueError('weekday 0..6, metric revenue|orders')
+        self.rules.require('Trung bình mỗi ngày thứ X của kỳ','so ngay thu X','ke ca ngay khong co don')
+        start, end = self._range(period)
+        days = pd.date_range(start,end,freq='D')
+        n = int((days.day_of_week == weekday).sum())
+        if not n:
+            raise _Unavailable('Kỳ không có ngày thứ được hỏi')
+        orders = self._orders(period,Filters(),True)
+        on_day = orders[self._dates.loc[orders.index].dt.day_of_week.eq(weekday)]
+        if metric == 'revenue':
+            total = Decimal(str(round(float(self._order_revenue(on_day,Filters()).sum()),6)))
+            return Answer('number',_number(total/n,self.rules.rounding_places('money')))
+        self._need_order_ids()
+        self.rules.require('Số đơn','khong huy','khong tra')
+        return Answer('number',_number(Decimal(len(on_day))/n,self.rules.rounding_places('average')))
