@@ -73,6 +73,10 @@ class Rulebook:
             values = re.findall(r'phan tram(?: va so trung binh khac)? lam tron (\d+) chu so', text)
             if values and set(values) == {'2'}:
                 return 2
+        if kind == 'average':  # trung bình không phải tiền (số đơn/ngày...)
+            values = re.findall(r'phan tram va so trung binh khac lam tron (\d+) chu so', text)
+            if len(set(values)) == 1:
+                return int(values[0])
         raise UnsupportedRule(f'Unsupported {kind} rounding convention')
 
     def shift_minutes(self, shift: str) -> tuple[int, int]:
