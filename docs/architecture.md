@@ -28,11 +28,13 @@ Mũi tên trong sơ đồ là luồng dữ liệu/cách gọi, không phải quy
 | business | `Rulebook`, `Periods`, `SalesMetrics`, `Answer`; tính tất định trên bảng chuẩn | Nội bộ business; pandas/numpy và stdlib |
 | queryplan | `QueryExecutor`, `validate_plan`, `ExecutionResult`; JSON plan -> Answer và trạng thái | Nội bộ queryplan, public API business; pandas và stdlib |
 | evaluate | Chấm type/format/value; local evaluator chưa được chứng nhận tương đương BTC | Stdlib |
-| Root tools | `load_all.py`, `verify_business.py`, `check_with_gold.py`, `generalize_check.py` | Ghép các API phục vụ phát triển/kiểm chứng |
+| Root tools / verification | `load_all.py`, legacy regression, `inventory_capabilities.py`, `verify_queryplans.py`; package dev-only `verification/` | Ghép các API phục vụ phát triển/kiểm chứng; scorer chỉ dùng sau predictions |
 | Harness | `scripts/harness.py`: ngữ cảnh, structural checks, test runner | Stdlib; gọi pytest/verifier qua subprocess |
 | Tests | Fixture tổng hợp trong Python/tmp_path; một số ca local_data | Có thể gọi nhiều tầng để kiểm chứng contract |
 
 `business/` không import `loader/` hoặc `queryplan/`: caller đưa bảng hoặc cache vào API. `queryplan/` không import loader/evaluator/verifier/network; caller cấp bảng chuẩn và rulebook/calendar đúng split. Loader không biết gold hoặc cách trả lời câu hỏi. Evaluator không phụ thuộc implementation tính toán. Xem [contract executor](queryplan.md); guard harness bảo vệ ranh giới package mới.
+
+[Capability verification](capability-verification.md) là luồng dev riêng: questions → grammar inventory → frozen manifest → QueryExecutor predictions → local scorer + gold. Runtime không import package/CLI verification. Legacy regression giữ riêng; không dùng gold hoặc kết quả legacy để tạo/chọn plan.
 
 Các bảng chuẩn chính: `cua_hang`, `don_hang`, `dong_hang`, `mat_hang`, `quy_doi_don_vi`, `khach_hang`. Xem phần schema tương ứng trong [DESIGN](../surveys/DESIGN.md); không tự tạo schema mới từ bản tóm tắt này.
 

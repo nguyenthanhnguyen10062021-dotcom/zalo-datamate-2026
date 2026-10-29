@@ -17,7 +17,7 @@ Tài liệu này ghi trạng thái thực tế. Đề xuất của một AI khô
 | ID | Vấn đề | Trạng thái | Nơi trao đổi |
 |---|---|---|---|
 | O001 | Contract và kiến trúc NLU → phép tính; độ sẵn sàng của API hiện tại | QueryExecutor v1 đã có trong working tree, gọi 10 API; model NLU chưa triển khai | [Contract executor](../docs/queryplan.md) |
-| O002 | Thứ tự mở rộng hệ thống | Tiếp theo inventory capability/verifier mở rộng, rồi NLU offline và runner tối thiểu; chưa mở rộng kho/nợ/lãi | Vòng 001; docs/PROGRESS.md |
+| O002 | Thứ tự mở rộng hệ thống | Đã có inventory/verifier độc lập; tiếp theo audit plan/unsupported buckets và mở coverage độc lập gold, rồi NLU offline/runner; chưa mở rộng kho/nợ/lãi | [Capability verification](../docs/capability-verification.md) |
 | O003 | Model inference offline và môi trường chạy | Chưa chọn; chưa yêu cầu quyết định trong vòng 001 | Thảo luận sau khi rõ phạm vi và ngân sách |
 
 ## Kết luận review ngày 2026-10-29
@@ -78,6 +78,21 @@ Code/test đã đẩy tại `c567b29`; hồ sơ trao đổi đã đẩy tại `2
 - Resolver dùng khớp NFC/casefold/khoảng trắng có dấu; nhiều mã cùng tên hoặc nhãn raw trùng sau normalize gây ambiguous. Thiếu loại thông tin có bằng chứng là unanswerable; unknown mention là unresolved/abstain. Không fuzzy hoặc logic theo ID.
 - ExecutionResult giữ Answer/status/stage; không tự ghi log, không nuốt lỗi implementation. Growth this_month mặc định so cùng số ngày tháng trước theo rulebook; share giữ mẫu số cả shop.
 - Chưa cung cấp JSON Schema constrained decoding, model, verifier mở rộng hoặc runner. Hồ sơ/bằng chứng: [plan executor](../docs/superpowers/plans/2026-10-29-queryplan-v1.md), [validation](../docs/validation.md). Schema/helper ở các phản hồi cũ vẫn là snapshot.
+
+## E002 — Frozen capability inventory / verifier độc lập (2026-10-29)
+
+- Người dùng yêu cầu thực hiện bước kế tiếp sau executor. Codex chọn hai CLI dev-only: inventory tạo manifest toàn corpus bằng grammar chỉ nhận nội dung câu, verifier replay manifest qua QueryExecutor rồi mới đọc gold và gọi evaluator local. Không mở nghiệp vụ kho/nợ, không thêm model/dependency, không dùng legacy gate.
+- Manifest có fingerprints/version/entry cho mọi câu; từ chối stale/missing/duplicate/modified payload. Giữ total/selected/outside_selection và selected=compared+abstained+execution_errors. Reference thiếu/trùng/lạ hoặc format lỗi làm từ chối chấm. File từng câu chỉ ở reports ignored.
+- Grammar có fixture cho 10 API, train hiện chỉ chọn 126/3000 chạm 7 API. Revision v2 chấm 125 khớp/125 compared, 1 unresolved quantity vẫn nằm trong selected, 0 mismatch/execution error; exit 1 có chủ ý. Không cộng với 409 legacy khi chưa đo giao/khác.
+- Review tổng hợp độc lập tìm mất dấu unit và scope filter hai vế so sánh; đã sửa RED→GREEN. Giữ nguyên manifest/report v1; v2 là revision sửa lỗi có fingerprint mới, không loại câu theo gold. Không mở rộng grammar theo các câu train sai/đúng trong lượt này.
+- Chưa có gold plans audit thủ công, group-disjoint/fold artifacts, holdout mới hoặc PA model. [Contract/lệnh](../docs/capability-verification.md), [execution record](../docs/superpowers/plans/2026-10-29-capability-verifier.md).
+
+## E003 — Audit annotation trước mở grammar (2026-10-29)
+
+- Người dùng giao audit unit unresolved và bucket chưa parse, ghi annotation độc lập gold trước mở grammar. Chốt mẫu deterministic tối đa 10/reason, luân phiên doanh nghiệp; 40 mẫu + 1 unit case, artifacts chỉ reports ignored. Không mở answers/report gold từng câu trong audit; có prior aggregate exposure, không gọi blind holdout.
+- Unit case là intent tiền/doanh thu sai thành quantity, rulebook §1 rõ; không sửa catalog/alias. Đã ghi plan revenue giữ kỳ/ca, chưa áp dụng grammar. 40 unparsed samples có 22 plan đề xuất, 14 thiếu capability, 4 domain khác; không ngoại suy population.
+- Các annotation là AI-reviewed, chưa human/independent adjudication hoặc gold plan chuẩn. Freeze packet/annotations+digests trước mở grammar; validator kiểm integrity/schema, không chứng minh semantics đúng. [Audit và giới hạn](../docs/plan-annotation-audit.md), [task/evidence](../docs/tasks/2026-10-29-plan-annotation-audit.md).
+- Bước kế tiếp sửa intent tiền bằng synthetic tests rồi mở họ grammar ngôn ngữ và comparison neo kỳ. Hai Filters/scalar/domain mới cần contract riêng; không ép vào v1 hoặc loại câu theo gold. Không đổi source grammar/runtime/manifest hoặc chạy chấm trong lượt này.
 
 ## Mẫu ghi quyết định mới
 

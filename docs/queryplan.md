@@ -91,4 +91,4 @@ Stage: normalize/structure/semantic/capability/period/data/resolve/dispatch. L�
 
 Tests dùng bảng/plan/calendar tổng hợp: cả 10 operation có expected value độc lập và đối chiếu public API; kiểm tra resolver, thời gian, lỗi, capability và input bất biến. Chạy `python -m pytest tests/test_queryplan_contract.py tests/test_queryplan_executor.py -q`, rồi harness full/data.
 
-Verifier gold hiện có chỉ gọi business trên tập chọn lọc, không chạy executor hoặc NLU. Bước tiếp theo là inventory capability và verifier mở rộng không phụ thuộc legacy gate; sau đó tích hợp model offline và đo riêng plan correctness/kết quả đầu-cuối. Chưa tuyên bố coverage hoặc PA của executor từ unit test hay 409 câu hồi quy business.
+Verifier legacy vẫn chỉ gọi business trên tập chọn lọc. Đã có [inventory và verifier độc lập](capability-verification.md) chạy QueryExecutor trên frozen manifest bằng grammar dev bảo thủ; chưa có model NLU. Tiếp theo cần audit/mở rộng plan coverage độc lập gold rồi tích hợp model offline và đo riêng plan correctness/kết quả đầu-cuối. Chưa tuyên bố PA của model từ unit test, bộ manifest hồi cứu hoặc 409 câu legacy.

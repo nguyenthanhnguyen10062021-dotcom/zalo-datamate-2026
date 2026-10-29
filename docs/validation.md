@@ -1,5 +1,27 @@
 # Kiểm chứng bản sửa nghiệp vụ ngày 2026-10-29
 
+## Audit plan annotation — 2026-10-29
+
+- Nền 4fd268e cộng working tree inventory/verifier đã có; thêm utility `verification/audit.py` và synthetic tests. Không sửa selector/manifest/resolver/business/evaluator. [Phương pháp và kết luận](plan-annotation-audit.md), [task record](tasks/2026-10-29-plan-annotation-audit.md).
+- Audit không mở answers hoặc report gold từng câu, không chạy scorer/answer computation. Re-resolve unit qua catalog xác định intent tiền bị phân loại quantity; 40 unparsed samples deterministic, 10/bucket, đóng băng trước annotation. Cả 41 đều có rationale, evidence, fingerprint và decision; 23 plan schema-valid gồm ca intent tiền + 22 trong mẫu. 14 cần capability mới, 4 domain chưa hỗ trợ.
+- Annotation/packet digests và corpus/catalog fingerprints kiểm tra qua; file frozen v2 còn hợp lệ với selector cũ. Artifact reports/capability_inventory/audit_v1/ ignored. Source utility thêm check annotation digest sau freeze được ghi bằng receipt riêng, không ghi đè annotations.
+- 9 tests utility (RED thiếu module, rồi RED chỉnh rationale sau digest không bị phát hiện → GREEN); targeted audit+inventory+verifier **54 passed**. Full **487 passed, 2 local_data deselected**; bare pytest **488 passed, 1 skip helper evaluator cũ**. Fast cuối kiểm doc links/whitespace/source boundary.
+- Không chạy data profile/gold verifier lần này vì không đổi tính toán. Kết quả 125 matched/1 abstain và baseline 409/409 phía dưới thuộc lượt trước, không phải đo mới hoặc annotation accuracy. Chưa sửa ca intent tiền.
+- Review semantic bởi chính AI annotator, không có human/independent adjudication. Prior aggregate score exposure và train đã dùng trước đây được ghi rõ; không gọi đây là blind/held-out, không ngoại suy 22/40 cho toàn bucket. Không LLM inference integration, dependency mới, commit/push.
+
+## Capability inventory / verifier độc lập — 2026-10-29
+
+Nền `4fd268e` cộng working tree; không sửa loader/business/queryplan/evaluator hoặc requirements. Grammar dev bảo thủ, kiểm chứng hồi cứu, không tuning public test. [Contract và lệnh](capability-verification.md); [plan/evidence](superpowers/plans/2026-10-29-capability-verifier.md).
+
+- Targeted inventory/verifier/guard: **100 passed**; gồm mẫu chuẩn cả 10 API, frozen manifest integrity, evaluator list alias/order, giữ lỗi/mismatch trong mẫu số, cache lỗi và exception implementation. Smoke hai CLI trên corpus tổng hợp giữ 1 mismatch và 1 abstain, exit 1 đúng contract.
+- Full sau sửa review: **478 passed, 2 local_data deselected**, fast/full exit 0. Bare pytest: **479 passed, 1 skip helper evaluator cũ**.
+- Inventory v2 chạy trên **3000** câu train: **126 selected, 2874 outside_selection**, 7 operation. Phân bố selected: revenue 62, cancellation_rate 22, cancelled_orders 14, quantity 3, order_count 7, average_order_value 14, revenue_growth 4. Top products/customers và share chưa được grammar chọn câu train nào; chỉ có synthetic coverage.
+- Verifier v2: **125 compared, 125 matched, 0 mismatch, 1 abstained (unresolved_entity ở quantity), 0 execution_errors**. Selected vẫn là 126; exit **1** theo contract vì còn abstain, không loại câu đó để trình bày 126/126. Report không chứng minh độ phủ sales/API hoặc PA model/NLU.
+- Trước khi sửa review đã đóng băng/chấm v1: cùng selected 126, compared/matched 125, abstained 1, mismatch/execution_errors 0. Review độc lập chỉ dùng synthetic tìm 2 Important: unit mất dấu và filter scope bị gộp giữa các vế; 3 regression RED→GREEN. Giữ nguyên v1, tạo v2 với selector fingerprint mới; đã xác nhận v1 bị từ chối replay âm thầm sau thay source. Không mở rộng grammar hoặc loại câu theo gold.
+- Reports local ignored: `reports/capability_inventory/manifest_v1.json`, `verification_v1.json`, `manifest_v2.json`, `verification_v2.json` và Markdown summaries. Các fingerprints question/rulebook/selector/scorer/runtime/cache/gold được giữ trong manifest/report; không sao chép rows vào tài liệu hoặc CI.
+- Data profile baseline riêng: **exit 0**, full 474/2 deselected trước 4 ca cuối, local_data **1 passed, 1 skip cũ**; legacy chọn **417/3000**, bỏ **8**, **409/409** khớp gold và legacy, **0 lỗi**. Source business/cache không đổi; lượt này không gọi verifier mới. Full 478/bare 479 ở trên chạy sau sửa. Chưa đo giao giữa hai tập, không cộng mẫu số.
+- Chưa chạy hosted CI/Linux. Chưa có audit gold plans, group-disjoint hoặc đánh giá dữ liệu chưa từng tiếp xúc. Next action: audit plan/unsupported buckets theo manifest, ghi annotation provenance độc lập gold rồi mở coverage; sau đó baseline model offline.
+
 ## QueryPlan executor v1 — lượt triển khai mới nhất 2026-10-29
 
 Nền `6dc41d7` cộng thay đổi working tree chưa commit. Thêm `queryplan/`, không đổi source loader/business/evaluator hoặc requirements; fixture chỉ dùng dữ liệu/plan/calendar tổng hợp.

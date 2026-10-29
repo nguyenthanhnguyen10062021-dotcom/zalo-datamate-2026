@@ -24,7 +24,7 @@ REQUIRED_DOCS = (
 )
 DEV_MODULES = {
     "evaluate", "tests", "surveys", "scripts", "load_all", "check_with_gold",
-    "generalize_check", "verify_business",
+    "generalize_check", "verify_business", "verification", "inventory_capabilities", "verify_queryplans",
 }
 NETWORK_MODULES = {
     "socket", "http", "urllib", "requests", "httpx", "aiohttp", "openai",

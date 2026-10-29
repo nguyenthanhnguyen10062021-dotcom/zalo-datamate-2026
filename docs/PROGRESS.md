@@ -2,7 +2,28 @@
 
 Ngày theo Asia/Saigon. Nhánh làm việc: `VuongNguyen`.
 
-## QueryPlan executor v1 — cập nhật mới nhất 2026-10-29
+Người dùng yêu cầu commit/push inventory-verifier và audit annotation, đồng thời mở vòng phản biện Gemini mới. Xác định revision bàn giao bằng git log; các ghi chú “chưa commit/push” bên dưới thuộc thời điểm kiểm chứng trước bàn giao.
+
+## Audit annotation trước khi mở grammar — cập nhật mới nhất 2026-10-29
+
+Đã audit **41 ca local** không mở gold hoặc scorer trong lượt này: ca quantity chưa resolve và mẫu cố định **40 câu chưa parse**, 10 mỗi reason bucket. [Kết luận và provenance](plan-annotation-audit.md), [task/evidence](tasks/2026-10-29-plan-annotation-audit.md).
+
+- Ca chưa resolve là **intent tiền/doanh thu bị nhầm thành quantity**, rulebook §1 quy định rõ; không phải catalog thiếu alias đơn vị. Annotation đề xuất revenue giữ tháng/ca. Chưa sửa grammar nên abstain v2 vẫn còn nguyên.
+- Mẫu 40 câu: **22 supported_plan, 14 unsupported_capability, 4 unsupported_domain**. Cộng ca tiền có 23 plan đề xuất trong 41 annotations; không ngoại suy sang 2874 câu hoặc gọi schema-valid plan là chắc đúng đáp án.
+- Frozen packet/annotations/digests/câu hỏi/catalog evidence chỉ ở `reports/capability_inventory/audit_v1/`. AI annotation có prior aggregate score exposure, chưa human adjudication hoặc blind holdout; chưa chạy annotation qua executor/scorer. Giữ grammar/manifest/runtime nguyên trạng.
+- Utility sampling/validation: 9 synthetic tests; targeted **54 passed**, full **487 passed, 2 deselected**, bare **488 passed, 1 skip helper cũ**. Integrity kiểm đủ 41 annotations và source/catalog hashes. Không chạy data/scorer vì không đổi phép tính; không có kết quả gold mới.
+- Bước kế tiếp: sửa intent tiền bằng synthetic contrast tests, rồi mở các họ grammar có annotation/dev provenance (time/paraphrase, comparison neo kỳ, ranking/list và nhóm hàng). Hai filter scope, scalar và nghiệp vụ mới cần contract riêng; không ép vào API hiện hành. Chưa commit/push.
+
+## Capability inventory / verifier độc lập — mốc triển khai 2026-10-29
+
+Đã thêm `inventory_capabilities.py`, `verify_queryplans.py` và package dev-only `verification/`; không thay runtime, nghiệp vụ hoặc thêm model. [Contract/lệnh](capability-verification.md), [plan/evidence](superpowers/plans/2026-10-29-capability-verifier.md).
+
+- Frozen manifest v2 phủ **3000** câu; grammar bảo thủ chọn **126**, chưa chọn **2874**, chạm **7/10 operation**. Dạng chuẩn cả 10 API được kiểm thử tổng hợp; chưa chọn train cho top_products/top_customers/share. Không gọi 126 là toàn bộ capability hoặc coverage sales.
+- Verifier mới độc lập legacy: **125/125 compared khớp**, **0 mismatch, 1 abstain quantity/unresolved_entity, 0 execution_errors**; selected vẫn **126**, exit **1** có chủ ý. Giữ v1/v2 và lý do revision; không bỏ câu lỗi hoặc tuning grammar theo gold. Không cộng với bộ 409 cũ khi chưa đo giao.
+- Review synthetic độc lập tìm 2 lỗi unit mất dấu/scope filter so sánh, đã sửa với regression RED→GREEN. Targeted **100 passed**; full **478 passed, 2 deselected**; bare **479 passed, 1 skip helper cũ**. Data profile baseline riêng đạt **409/409**, chọn **417/3000**, legacy bỏ **8**, 0 lỗi.
+- Bước tiếp theo: audit plan và các bucket chưa parse, ghi nguồn annotation độc lập gold để mở coverage; sau đó baseline model offline. Chưa có gold plan chuẩn, group-disjoint hoặc PA model/NLU. Chưa commit/push trong tác vụ này.
+
+## QueryPlan executor v1 — mốc triển khai 2026-10-29
 
 Người dùng duyệt triển khai executor trên 10 API sẵn có. Đã thêm package `queryplan/`: validator Python không dependency mới, resolver thời gian/tên/đơn vị, capability check và dispatcher; `ExecutionResult` giữ Answer/status/stage. Không đổi loader/business/evaluator; chưa thêm model hoặc runner submission.
 
@@ -84,12 +105,12 @@ Chi tiết: [validation](validation.md), [API](business.md), [hồ sơ triển k
 1. Đọc báo cáo này, PROJECT_CONTEXT, DECISIONS và source tại commit code mới; kiểm tra nhánh/worktree trước khi sửa.
 2. Nếu có `GEMINI_RESPONSE_05.md`, tự kiểm chứng các phản chứng mới. Hiện **chưa có file phản hồi 05** trong repo. Gói prompt 05 đã chuẩn bị, cần kèm cập nhật code đã áp dụng khi gửi; không lấy snapshot `1c89252` làm source hiện hành.
 3. Executor JSON v1 đã triển khai và kiểm thử; tiếp tục bằng [API hiện hành](queryplan.md), không áp dụng lại schema/helper lịch sử. Executor trả status/stage để caller ghi log local, chưa tự ghi file.
-4. Mở rộng verifier sang các thao tác/kỳ còn thiếu, báo chọn/bỏ/lỗi/chênh; không chọn câu theo việc đã khớp gold. Cố định manifest đánh giá hồi cứu.
+4. Đã có verifier độc lập và frozen manifest hồi cứu; tiếp tục audit plan/grammar chưa hỗ trợ theo [capability verification](capability-verification.md), không loại/chọn theo kết quả khớp gold.
 5. Chọn và tích hợp model offline sau khi executor ổn định; đo riêng độ đúng plan và kết quả đầu-cuối.
 6. Hoàn thiện runner, Docker và đo PA/coverage/precision/thời gian trên phạm vi đã công bố.
 
 ## Điểm bắt đầu nhanh
 
-> Tiếp tục từ docs/PROGRESS.md và docs/queryplan.md. Executor v1 đã có trong source; kiểm tra git status, git log và execution record trước khi sửa. Ưu tiên inventory capability/verifier mở rộng rồi tích hợp model offline; không suy PA đầu-cuối từ verifier business chọn lọc.
+> Tiếp tục từ docs/PROGRESS.md và docs/plan-annotation-audit.md. Executor có tại 4fd268e; inventory/verifier và audit mới ở working tree. Đã đóng băng 41 annotations AI độc lập gold trong lượt audit, có provenance/giới hạn. Sửa intent tiền trước rồi mở grammar theo annotation dev, không ép hai filter/scalar vào contract v1 hoặc suy PA model từ hồi cứu.
 
 Các mục baseline nghiệp vụ/harness phía trên là lịch sử đã ghi; lượt triển khai executor và kết quả chạy mới được ghi riêng ở đầu tài liệu và validation.

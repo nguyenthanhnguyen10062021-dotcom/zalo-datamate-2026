@@ -22,7 +22,13 @@
       "id": "queryplan-v1-contract",
       "touches": ["queryplan/*", "tests/test_queryplan*", "tests/queryplan_fixtures.py", "business/*", "ai_collaboration/*"],
       "read": ["docs/queryplan.md", "queryplan/AGENTS.md", "docs/PROGRESS.md", "ai_collaboration/DECISIONS.md"],
-      "summary": "QueryExecutor v1 đã có validator/resolver/capability/dispatch trên 10 public API; giữ status/stage và các loại lỗi riêng. NLU, schema constrained decoding và verifier mở rộng chưa có; không suy PA từ hồi quy business cũ."
+      "summary": "QueryExecutor v1 đã có validator/resolver/capability/dispatch trên 10 public API; giữ status/stage và các loại lỗi riêng. Đã có verifier dev frozen manifest riêng; NLU và schema constrained decoding chưa có, không suy PA model từ hồi quy."
+    },
+    {
+      "id": "frozen-capability-verification",
+      "touches": ["verification/*", "inventory_capabilities.py", "verify_queryplans.py", "tests/test_capability_inventory.py", "tests/test_queryplan_verification.py", "tests/test_plan_annotation_audit.py"],
+      "read": ["docs/capability-verification.md", "docs/plan-annotation-audit.md", "verification/AGENTS.md", "docs/validation.md", "ai_collaboration/DECISIONS.md"],
+      "summary": "Dev-only grammar inventory không nhận gold/cache/ID; frozen manifest phủ corpus và kiểm fingerprint, verifier gọi QueryExecutor rồi scorer local, không legacy gate. Giữ mọi abstain/error/mismatch trong mẫu số; đây là hồi cứu grammar+executor, chưa model PA hoặc holdout mới."
     },
     {
       "id": "gemini-evidence-and-manual-transfer",

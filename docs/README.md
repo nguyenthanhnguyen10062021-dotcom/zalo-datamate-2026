@@ -9,6 +9,8 @@
 | Nghiệp vụ/thời gian | [API](business.md), [hướng dẫn business](../business/AGENTS.md) | `python scripts/harness.py context business/sales.py` |
 | Bộ chấm | [hướng dẫn evaluator](../evaluate/AGENTS.md) | `python scripts/harness.py context evaluate/evaluate.py` |
 | Kiểm chứng | [bằng chứng và giới hạn](validation.md), [harness](harness-engineering.md) | `python scripts/harness.py check` |
+| Inventory capability / verifier mới | [contract và lệnh](capability-verification.md), [hướng dẫn dev-only](../verification/AGENTS.md) | `python scripts/harness.py context verification/runner.py`; manifest local trước gold |
+| Audit plan annotation | [phương pháp/kết luận](plan-annotation-audit.md), [task evidence](tasks/2026-10-29-plan-annotation-audit.md) | `python scripts/harness.py context verification/audit.py`; artifact từng câu chỉ reports/ |
 | QueryPlan/NLU tiếp theo | [executor v1](queryplan.md), [hướng dẫn queryplan](../queryplan/AGENTS.md), [quyết định](../ai_collaboration/DECISIONS.md) | `python scripts/harness.py context queryplan/executor.py`; NLU chưa có |
 | Gemini/LLM review | [workflow](../ai_collaboration/README.md), [hướng dẫn](../ai_collaboration/AGENTS.md) | Mở đúng vòng/lượt cần kiểm chứng |
 | Tác vụ qua nhiều phiên | [mẫu task](tasks/TEMPLATE.md) hoặc kế hoạch đang làm | Giữ acceptance, evidence, next action trong cùng hồ sơ |
