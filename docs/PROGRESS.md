@@ -4,6 +4,8 @@ Ngày theo Asia/Saigon. Nhánh làm việc: `VuongNguyen`.
 
 Người dùng yêu cầu commit/push inventory-verifier và audit annotation, đồng thời mở vòng phản biện Gemini mới. Xác định revision bàn giao bằng git log; các ghi chú “chưa commit/push” bên dưới thuộc thời điểm kiểm chứng trước bàn giao.
 
+Source inventory/verifier/audit đã commit tại **`d99cac2`**. Đã chuẩn bị [vòng002 readiness review](../ai_collaboration/rounds/002_capability_readiness/README.md), handoff tự chứa 37 source/test/docs từ revision này với SHA256 từng file. Gói chỉ có source/synthetic/aggregate, chưa gửi Gemini và chưa có phản hồi. Người dùng chuyển file theo prompt; phản hồi dự kiến `GEMINI_RESPONSE_01.md` của vòng002. Kiểm tra trước bàn giao mới chạy: full **487 passed/2 deselected**, bare **488 passed/1 skip cũ**, fast qua; không chấm lại gold trong tác vụ đóng gói.
+
 ## Audit annotation trước khi mở grammar — cập nhật mới nhất 2026-10-29
 
 Đã audit **41 ca local** không mở gold hoặc scorer trong lượt này: ca quantity chưa resolve và mẫu cố định **40 câu chưa parse**, 10 mỗi reason bucket. [Kết luận và provenance](plan-annotation-audit.md), [task/evidence](tasks/2026-10-29-plan-annotation-audit.md).

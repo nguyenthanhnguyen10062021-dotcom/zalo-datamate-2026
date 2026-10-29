@@ -2,9 +2,15 @@
 
 Thư mục này dùng để đưa bối cảnh từ repo sang Gemini web, nhận phản biện rồi đưa về Codex kiểm chứng và triển khai. Mỗi vòng tập trung vào một vấn đề. Có thể dùng cùng cách này với LLM khác.
 
-**Điểm tiếp tục 2026-10-29:** đọc [docs/PROGRESS.md](../docs/PROGRESS.md) và [QueryPlan executor v1](../docs/queryplan.md) vừa triển khai trong working tree. Tiếp theo là inventory capability/verifier mở rộng rồi tích hợp NLU offline. Đã review Gemini đến lượt 04; chưa có phản hồi 05. Các đoạn “chưa áp dụng” và commit/số test bên dưới là trạng thái lịch sử của từng lượt, không phải source executor hiện hành.
+**Điểm tiếp tục 2026-10-29:** source inventory/verifier và audit đã commit tại `d99cac2`, executor ở `4fd268e`. Mở [vòng002 — readiness review](rounds/002_capability_readiness/README.md) để hỏi Gemini về trạng thái hiện tại; gói tự chứa neo source `d99cac2`. Chưa có phản hồi vòng002. Các snapshot vòng001 bên dưới là lịch sử; không dùng làm source executor/verifier hiện hành.
 
 ## Bắt đầu ngay
+
+1. Mở cuộc trò chuyện mới trên Gemini, đính kèm [GEMINI_HANDOFF vòng002](rounds/002_capability_readiness/GEMINI_HANDOFF.md).
+2. Copy và gửi [GEMINI_START_PROMPT vòng002](rounds/002_capability_readiness/GEMINI_START_PROMPT.md). Năm câu hỏi chi tiết nằm đầu handoff và trong [REVIEW_REQUEST](rounds/002_capability_readiness/REVIEW_REQUEST.md).
+3. Nhận file `GEMINI_RESPONSE_01.md` (vòng002), lưu nguyên vào `rounds/002_capability_readiness/`, rồi giao Codex kiểm chứng. Chưa có phản hồi, chưa tự gửi lên Gemini hoặc tuyên bố đã được Gemini review.
+
+## Cách bắt đầu vòng001 trước đây (lịch sử)
 
 Nhánh làm việc: [VuongNguyen trên GitHub](https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/tree/VuongNguyen). Bản code nền cho vòng 001: [`1c89252`](https://github.com/nguyenthanhnguyen10062021-dotcom/zalo-datamate-2026/tree/1c89252). Xem [bằng chứng kiểm chứng](../docs/validation.md).
 
