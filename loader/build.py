@@ -645,8 +645,10 @@ def build_customers(tms: list[TableMap]) -> pd.DataFrame:
 
 def _join_customers(orders: pd.DataFrame, customers: pd.DataFrame, co_ma_khach: bool):
     """Nối danh sách khách vào đơn: theo mã khách; tiệm không có mã khách thì theo tên (khớp khoá tên, duy nhất).
-    Chỉ lấp ô còn trống của đơn (nhom_khach, sdt_khach, dia_chi_khach)."""
-    for c in ("nhom_khach", "sdt_khach", "dia_chi_khach"):
+    Chỉ lấp ô còn trống; tên khách chỉ bổ sung khi nối theo mã duy nhất.
+    Không thay tên gốc, định danh hoặc phân loại khách lẻ của đơn."""
+    fill_columns = ("nhom_khach", "sdt_khach", "dia_chi_khach")
+    for c in fill_columns:
         if c not in orders:
             orders[c] = None
     if not len(customers) or not len(orders):
@@ -654,13 +656,16 @@ def _join_customers(orders: pd.DataFrame, customers: pd.DataFrame, co_ma_khach: 
     cust = customers.rename(columns={"sdt": "sdt_khach", "dia_chi": "dia_chi_khach"})
     if co_ma_khach and cust["ma_khach"].notna().any():
         key_o, key_c = orders["ma_khach"], cust["ma_khach"]
+        fill_columns = ("ten_khach", *fill_columns)
+        if "ten_khach" not in orders:
+            orders["ten_khach"] = None
     else:
         key_o = orders["khach_key"]
         key_c = cust["ten_khach"].map(nk)
     cust = cust.assign(_k=key_c.values).dropna(subset=["_k"])
     cust = cust[~cust["_k"].duplicated(keep=False)].set_index("_k")   # chỉ nhận khoá duy nhất
     n = 0
-    for c in ("nhom_khach", "sdt_khach", "dia_chi_khach"):
+    for c in fill_columns:
         if c in cust:
             filled = key_o.map(cust[c])
             n = max(n, int((orders[c].isna() & filled.notna()).sum()))

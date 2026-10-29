@@ -1,5 +1,65 @@
 # Kiểm chứng bản sửa nghiệp vụ ngày 2026-10-29
 
+## Semantic safety và prompt3 — 2026-10-29
+
+Người dùng sau đó báo BTC chấm publicv3 **0.10400** (v1-0.20200; tăng0.30600). Hash submission tái kiểm đúng bản bàn giao. Với128non-abstain và công thức+1/-1/0 trên1000câu, suy ra116correct/12wrong và precision90,625% nếu protocol chấm đúng128phản hồi. Đây là suy luận aggregate từ score người dùng báo, không phải public gold hoặc audit từng câu; chưa biết12câu nào sai. Không dùng feedback để fit gate/threshold hoặc sửa câu theo ID.
+
+[Task và commands/evidence](tasks/2026-10-29-semantic-safety.md), [contract](nlu.md). User báo publicv1 score-0.20200; không có public gold để gán đúng/sai từng câu. Gate chỉ kiểm question/plan, không nhận ID/score/gold, không sửa plan hoặc thay failure thành zero/unanswerable. Model, schema, sampling và business không đổi; prompt3 là nhánh thử riêng sau replay.
+
+| Phép đo cùng evaluation632 | Correct | Wrong | Abstain | PA |
+|---|---:|---:|---:|---:|
+| Baseline prompt2 gốc |303|182|147|19,1456%|
+| Cùng predictions + semantic gate1 |203|0|429|32,1203%|
+| Fresh Modal prompt3 + cùng gate1 |233|0|399|36,8671%|
+
+- Gate chặn182wrong nhưng mất100correct của baseline; prompt3 tăng30correct so cùng predictions+gate. Giữ632trong denominator; có prior train/source/question-only exposure nên là retrospective diagnostic, không blind holdout hay public precision guarantee. Không đổi gate sau khi nhìn public replay.
+- Prompt3 evaluation:632generation/632unique,0backend errors,631stop/1length;630contract-valid. Statuses:answered229/unanswerable4/semantic_rejected333/unsupported_plan47/unsupported_capability12/unresolved_entity5/incomplete_generation1/invalid_plan1. Tất cả predictions freeze trước gold. Development90/1815:36correct/0wrong/54abstain; ngoài selection1725.
+- Targeted semantic/orchestration tests xác nhận contrast intent/filter/time/ranking, không dispatch plan sai nghĩa, giữzero/unanswerable có evidence; replay kiểm hash/source/routing/raw-plan, không đọc public gold, giữ thứ tự/mẫu số và exclusive artifacts. Full mới nhất **688passed/2deselected**, gồm transport-prefix/recovery và merge CLI regression. Data profile trước các thay đổi prompt/parallel:full683passed/2deselected,local1passed/1skip helper cũ,selected409/409. Business/loader/queryplan/scorer không đổi trong đợt này.
+- Public replayv2 đã có1000rows/97answers/903abstain, score ceiling0,097. Public prompt3 đã freeze trước inference, chạy10fixedshards theo chỉ thị mới; service xác nhận app`ap-TnmPVq5oX8MmV92VaAdrOA` có10tasks. App development/evaluation và app lỗi Python đều stopped/tasks0 trước public. Python3.12Modal env có sẵn; không cài dependency hoặc dùng Python3.14 serialized worker.
+- Historical budget/submissionv1 hashes giữ nguyên theo task. Parallel experiment reservation17USD là envelope riêng, không phải invoice. Chưa Docker/offline packaging hoặc upload portal.
+- Publicv3 hoàn tất:1000rows/1000unique/đúng thứ tự/UTF-8 noBOM/46.926byte,validator và source/cache/predictions hashesPASS. Types112number/8percent/6list/2unanswerable/872abstain; score ceiling0,128. SHA-256 `38a59d278631f91d28a4c9314b92bf63d3f196504e0feba3a81b8c153e49a58a`. Selected raw1000unique/stop,0missing; không execution_error. Hai worker primary timeout900s sau kẹt download;8GPUrecovery chỉ chạy200request chưa có output, tổng<=10. Merge816primary+184secondary,16overlap chọn primary cố định.17worker metadata có một model-file hash set. Tất cả5app của đợt đã stopped/tasks0; failure/partial receipts giữ nguyên, không che timeout bằng claim toàn-cloud error-free.
+
+## File public submission v1 — 2026-10-29
+
+- Artifact `reports/public_submission/v1/submission.jsonl`: **1.000 dòng / 1.000 ID duy nhất / đúng thứ tự / 64.040byte / UTF-8 không BOM**. SHA-256 `4487a9e300acd6996b621f6e195613e1e931f70246854d5a9405bf3dc8566591`; validator type/shape/fields/finite PASS. Cache/source/job fingerprints và predictions digest tái kiểm PASS; gold_opened_this_run=false.
+- Generation gốc1.000/1.000; statuses: answered698, unanswerable48, unresolved_entity143, unsupported_capability24, unsupported_plan57, invalid_plan27, data_error2, incomplete_generation1. Upload types:number529/percent115/list54/unanswerable48/abstain254. Không sửa/repair lỗi hoặc rút khỏi mẫu số; không public gold/PA.
+- Cache14business/0crash; jobs hash `1ecc2ee7c4cab65039d2aa70048b8a6b1a1c288deb019b930603d7f5de35321d`. Core Qwen revision/prompt/schema/sampling giữ nguyên. Local executor8process theo business; synthetic serial/parallel order test PASS. Harness cuối640passed/2deselected; data gate trướccloud409/409selected, không whole-train PA.
+- App gốc `ap-EuK7RZHXJon3m4myvJvEqK` completed/stopped/tasks0. User duyệt thêm tối đa10GPU; pool bổ sung `ap-nD2iIoOkRhwcb48RCJxc3N` capped7, generated118/408 rồi chủ động stopped/tasks0 khi gốc đủ1000; output bổ sung không dùng trong file cuối. Các app lỗi SDK trước đó đều stopped/tasks0. Bound cả hai pool + allowance + margin4,843488USD trongcap5USD; không phải hóa đơn. Baseline ledger hash không đổi.
+- File chưa upload, chưa Docker. Chi tiết ở [task](tasks/2026-10-29-public-submission-file.md); artifacts/receipts từng dòng chỉ reports/ ignored.
+
+## Baseline NLU/Modal — evaluation cố định 2026-10-29
+
+[Contract và execution record](tasks/2026-10-29-nlu-modal-baseline-plan.md). Private batch trên profile `vuonghungnguyen07`, không public endpoint; model Qwen2.5-7B-Instruct revision `a09a35458c702b33eeacc393d103063234e8bc28`, vLLM0.21.0/Python3.12.1, NVIDIAA10. Schema/prompt v2 được đóng băng trong `evaluation_jobs_v2.json` trước generation; predictions632câu được ghi trước khi local runner mở gold.
+
+- Cloud artifact: **632/632 request ID duy nhất, 632 stop, 0 error**, 2metadata; local elapsed580,015giây, model load160,767giây. App `ap-JlVK91P8vjr6OD7v5Cbe4D` được Modal xác nhận completed rồi stopped/tasks0. Job hash `8e37b19e36a64f696196c982e17b339ae4099f5a5aa24f99684cb245853695c0`; reports/ chứa raw hashes/model-file hashes và receipt, không track row-level data.
+- Contract/execution: JSON-valid **632**, plan-contract-valid **627**; statuses answered474, unanswerable11, unsupported_plan23, unresolved_entity104, unsupported_capability15, invalid_plan5. Cả5 invalid là revenue_share thiếu filter; không repair hoặc loại khỏi mẫu số.
+- Score trên fixed evaluation business partition: **303 correct / 182 wrong / 147 abstain / 632 total**; penalized accuracy **19,1456%**, coverage **76,7405%**, answered precision **62,4742%**. Reference plan question-only12câu:6literal match, chưa equivalence adjudication; cùng AI/source exposure, không blind/human/fold-clean.
+- Ledger đã đủ4/4call, tổng reservation24USD gồm setup và5USDmargin trong cap25USD. Maximum compute reservation của lượt cuối1,9346272USD; actual invoice/service meter còn lag/chưa quan sát, không đồng nhất reservation với chi tiêu thật. Không dispatch thêm.
+- Regression: targeted NLU **40 passed**; harness full sau sửa **603 passed, 2 local_data deselected**. Không đổi business/queryplan/loader/scorer trong lượt sửa schema/prompt; cache loader revision được truyền tường minh. Chưa chạy hosted CI/Linux, public test, offline container hoặc official evaluator.
+
+## Sửa missingness cache và tên khách theo mã — 2026-10-29
+
+[Task contract/evidence](tasks/2026-10-29-loader-missingness-customer-name.md) theo yêu cầu người dùng, chỉ hai sửa dữ liệu. Writer chuyển object sang nullable string trực tiếp thay vì stringify missing scalars; join chỉ bổ sung tên thiếu bằng mã duy nhất. Không đổi business/selector/queryplan/scorer hoặc thêm dependency.
+
+- 9 ca synthetic mới: RED6failed/3passed trên source cũ; GREEN9passed. Có roundtrip None/NaN/pd.NA/NaT, literal strings/zero đầu, số/bool/date/mixed/nested và input immutability; tên có sẵn/tên gốc/key/walk-in/duplicate/no-code giữ contract, customer ranking qua cache thật có expected literals.
+- Targeted loader/parsers/infer **165 passed**; harness full **554 passed, 2 local_data deselected**. Doctor đúng 5 pinned packages. Data profile PASS, local_data **1 passed / 1 skip** helper evaluator cũ; baseline cache mặc định **409/409**, riêng với cache mới dưới đây.
+- Rebuild train revision riêng `reports/loader_fixes_20261029/cache`: **30 doanh nghiệp / 0 crash**. `verify_queryplans.py --manifest reports/capability_inventory/manifest_v4.json --cache reports/loader_fixes_20261029/cache --out reports/loader_fixes_20261029/verification_v4.json`: **396 selected/compared/matched**, 2604 outside / 3000 total, 0 mismatch/abstain/execution_errors. Baseline mới qua `verify_business.py --cache reports/loader_fixes_20261029/cache --out reports/loader_fixes_20261029/business_verification`: **417 selected / 8 skipped / 409 compared**, 409 khớp gold và legacy, 0 errors. Hai CLI exit0; không cộng mẫu số.
+- Audit replay nguyên 46 reference plans, giữ 15 not_run trong tổng61: **42 compared = 41 matched + 1 mismatch, 4 abstain, 0 execution_errors**. Một mismatch customer-ranking→matched; mọi kết quả khác giữ outcome. CLI evaluator trên cùng predictions freeze xác nhận **41 correct / 1 wrong / 4 abstain**. Không sửa frozen annotation hoặc tính thêm bare-group plans sau gold.
+- So **150 bảng canonical** cũ/mới không thấy thay đổi shape/schema hoặc giá trị ngoài khôi phục missingness và bổ sung tên. Receipt kiểm **661 protected files không đổi**, gồm cache mặc định, old manifests/annotations và source/corpus liên quan; hash 423 cache files mới. Report chi tiết/dự đoán/errors chỉ reports/ ignored. Cache mặc định chưa promote; không rebuild public test hoặc claim hosted CI/model PA.
+
+Các số audit bên dưới giữ nguyên snapshot trước sửa; không cộng mẫu số hoặc suy toàn-train/model PA.
+
+## Audit semantic v4 — kiểm mới nhất, chưa sửa source
+
+Nền commit local00043fa. [Task/acceptance/findings](tasks/2026-10-29-v4-semantic-audit.md) được chốt trước lấy mẫu. Freeze61câu và annotation trước candidate comparison/catalog/gold; không blind hoặc independent/human adjudication. Candidate pools lexical customer110/share97, mẫu12mỗi pool; selected37 phân tầng8ops, không suy population accuracy.
+
+- Selected37 reference/candidate JSON trùng37/37 và đáp án37matched. Unparsed24:9plan hiện có,6capability gaps,5debt-domain false positives,4cần catalog phân loại group. Giữ denominator và không thay sample sau đọc.
+- Reference46plans: **42compared=40matched+2mismatch**, **4abstain**, **0execution_errors**;15annotation không chạy vì không plan. Riêng9plan từ unparsed:3matched/2mismatch/4abstain. Cả2mismatch trả unanswerable dù gold có đáp án; không thay bằng abstain sau chấm.
+- Local scoring adapter lượt đầu sai thứ tự arguments và kiểu kết quả, report `scoring.json` vô hiệu. `scoring_v2.json` chấm cùng predictions đã freeze bằng API đúng, có3synthetic adapter assertions; CLI evaluator chính thức xác nhận **40correct/2wrong/4abstain** trên46câu, exit0. Exit0 ở CLI không có nghĩa all-correct. Không lấy tỷ lệ này làm modelPA.
+- Chẩn đoán nguồn: customer-name join thiếu tên; customer-group mapping thiếu nhưng căn cứ README còn chưa đủ;2unaccented labels và2canonical vocabulary bridges unresolved.4baregroup có catalog evidence bổ sung,2prescription predicates cần grounded filter contract. Không sửa originals hoặc execute thêm4baregroup sau gold để đổi mẫu số.
+- Tái hiện **lỗi source hiện tại** bằng data tổng hợp: missing key pd.NA → literal string khi ghi parquet, missing1→0. Fixture/output/receipt ở reports/ ignored, source/cache không đổi. Chưa đo ảnh hưởng toàn cache, chưa rebuild hoặc tự suy lỗi chỉ do cache cũ.
+- Harness full mới **545passed/2local_data deselected** trước audit; source/tests không đổi sau đó. Fast cuối và integrity receipts kiểm source/cache/old manifests/annotations. Không chạy lại data baseline409 hoặc toàn396; số của các lượt trước giữ snapshot riêng. Chưa hostedCI/Linux, model hoặc toàn-trainPA.
+
 ## Sau Argon: intent/span, preflight, calendar và grammar — mới nhất
 
 [Task contract/evidence](tasks/2026-10-29-selector-calendar-implementation.md) được chốt trước sửa code. Bốn file tests tổng hợp mới có **58 ca đạt**, có RED→GREEN cho intent/span, preflight, calendar và grammar, negative contrasts và compatibility. Không đổi loader/business/evaluator/requirements; không LLM.

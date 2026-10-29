@@ -66,6 +66,8 @@ Exit 0 chỉ khi selected/compared đều khác 0 và không mismatch, abstain h
 
 ## Kiểm chứng và giới hạn
 
+Sau baseline v4, [audit semantic61câu](tasks/2026-10-29-v4-semantic-audit.md) giữ37selected đúng trong mẫu và tìm2mismatch/4abstain ở9reference plans từ customer/share unparsed. Phát hiện missingness serialization/customer metadata/label bridge cần xử lý trước model. Không cộng reference-audit results vào396selected hoặc coi2API đã được grammar kiểm chứng train; nguồn selector/runtime không đổi trong lượt audit.
+
 Tests tổng hợp: `python -m pytest tests/test_capability_inventory.py tests/test_queryplan_verification.py tests/test_harness.py -q`, rồi harness full, bare pytest và data profile cho baseline cũ. Xem số liệu thực đo tại [validation](validation.md) và [execution record](superpowers/plans/2026-10-29-capability-verifier.md).
 
 Độ phủ grammar không bằng độ phủ domain/API. Kết quả verifier là grammar + resolver + executor trên manifest train hồi cứu, không phải PA model/NLU, không phải chứng cứ holdout mới. Bộ legacy 417 chọn / 8 bỏ / 409 đối chiếu là baseline riêng, không cộng vào mẫu số mới khi chưa tính giao/khác. Group-disjoint/fold artifacts, gold plan được audit thủ công, model và runner submission chưa có trong tác vụ này.

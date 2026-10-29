@@ -106,7 +106,7 @@ Quy ước: kiểu `str/int/float/date/datetime/bool`; **B** = bắt buộc (thi
 | trang_thai | enum{hoan_thanh, huy, tra_hang, dang_giao} | B | Chuẩn hoá từ `trang_thai_goc` |
 | trang_thai_goc | str | B | Giữ để debug |
 | ma_khach | str | T | §3 "Shop có mã khách" |
-| ten_khach | str | T | Tên đã bỏ SĐT; NULL nếu là khách lẻ |
+| ten_khach | str | T | Tên đã bỏ SĐT; chỉ lấp tên thiếu từ danh mục khi mã khách khớp duy nhất. Giữ tên trên đơn, `ten_khach_goc`, định danh và phân loại khách lẻ; không suy tên khi thiếu mã hoặc khóa danh mục trùng |
 | ten_khach_goc | str | T | Chuỗi nguyên văn, dùng làm alias đáp án |
 | la_khach_le | bool | B | |
 | nhom_khach | str | T | Lấy từ đơn hoặc từ `khach_hang` |

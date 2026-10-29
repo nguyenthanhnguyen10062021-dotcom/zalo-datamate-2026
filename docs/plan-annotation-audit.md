@@ -1,5 +1,7 @@
 # Audit annotation từ câu hỏi, không dùng gold — 2026-10-29
 
+**Lượt mới sau đó:** [semantic audit v4](tasks/2026-10-29-v4-semantic-audit.md) đã freeze61câu/refs trước scoring, tìm thêm khoảng trống dữ liệu/resolution của customer/share và bug missingness serialization. Không sửa41annotations cũ; đây là audit mới có denominator và phase gold-access riêng.
+
 **Cập nhật sau triển khai:** đã sửa intent/span và mở grammar có giới hạn theo [task sau Argon](tasks/2026-10-29-selector-calendar-implementation.md); v3/v4 là manifest mới, không sửa v2 hoặc annotation41. Phần bên dưới giữ snapshot lượt audit ban đầu, khi chưa sửa grammar.
 
 Receipt mới `preflight_capability_v2.json` local chứa receipt schema/capability riêng và envelope có source/input/cache hashes: 23 plan qua capability,18 không có plan nên not_checked. Optional filter-only resolution: 4 resolved,19 not_required; không tính đáp án/scorer, không kiểm period hoặc execution. `verification.audit.preflight_annotations` không sửa annotations và không truy cập dữ liệu; phần filter resolution do caller dev thực hiện riêng với SalesMetrics validation trước. Original packet/annotation file hashes và payload digests không đổi. Đây không phải human adjudication hoặc chứng nhận diễn giải đúng.

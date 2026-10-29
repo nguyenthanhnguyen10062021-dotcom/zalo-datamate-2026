@@ -1,6 +1,24 @@
 {
   "entries": [
     {
+      "id": "public-submission-file",
+      "touches": ["tools/public_jobs.py", "run_public_submission.py", "tools/modal_nlu.py", "tools/nlu_budget.py", "tests/test_public_submission.py", "tests/test_nlu_jobs.py"],
+      "read": ["docs/superpowers/specs/2026-10-29-public-submission-file-design.md", "docs/superpowers/plans/2026-10-29-public-submission-file.md", "docs/nlu.md", "tools/AGENTS.md", "docs/PROGRESS.md"],
+      "summary": "Luồng public chỉ đóng băng 1.000 câu/cache/prompt/schema, sinh plan bằng một batch Modal Qwen2.5-7B với budget riêng tối đa 5 USD rồi thực thi local. Không đọc gold/answers, không fit public, không upload hoặc Docker; mọi lỗi theo câu phải giữ ở sidecar và chuyển thành abstain trong submission."
+    },
+    {
+      "id": "nlu-modal-baseline",
+      "touches": ["nlu/*", "tools/nlu*", "tools/modal_nlu.py", "run_nlu.py", "tests/test_nlu*", "requirements-modal.txt"],
+      "read": ["docs/nlu.md", "nlu/AGENTS.md", "tools/AGENTS.md", "docs/tasks/2026-10-29-nlu-modal-baseline-plan.md", "docs/PROGRESS.md"],
+      "summary": "Người dùng đã giao triển khai baseline và tự quyết kỹ thuật; Modal profile vuonghungnguyen07, cap25USD. Core nlu strict JSON không repair/last-block, SDK dev-only; frozen business-disjoint protocol trước tuning, predictions trướcgold. Real GPU smoke đang chạy; chưa model PA hoặc submission readiness."
+    },
+    {
+      "id": "v4-semantic-audit-findings",
+      "touches": ["load_all.py", "loader/*", "business/*", "queryplan/resolution.py", "verification/audit.py", "tests/test_loader_data_integrity.py"],
+      "read": ["docs/tasks/2026-10-29-loader-missingness-customer-name.md", "docs/tasks/2026-10-29-v4-semantic-audit.md", "docs/validation.md"],
+      "summary": "Audit61 refs freeze trước gold:37selected khớp;9unparsed plans có2mismatch/4abstain trên cache cũ. Đã sửa writer bảo toàn missingness và bổ sung tên thiếu theo mã khách duy nhất; xem task loader fixes và validation cho kiểm chứng/cache revision. Group mapping thiếu evidence, label bridge vẫn cần contract; không suy PA từ subset."
+    },
+    {
       "id": "business-error-and-filter-contract",
       "touches": ["business/*", "tests/test_business*", "verify_business.py"],
       "read": ["docs/business.md", "ai_collaboration/DECISIONS.md"],
@@ -34,7 +52,7 @@
       "id": "gemini-evidence-and-manual-transfer",
       "touches": ["ai_collaboration/*"],
       "read": ["ai_collaboration/README.md", "ai_collaboration/AGENTS.md"],
-      "summary": "Kiểm chứng độc lập đề xuất bằng current source/test; giữ nguyên phản hồi cũ và ghi dirty state/fingerprint trong gói mới. Chuyển Gemini hiện qua file; packet không chứa dữ liệu BTC hoặc bí mật."
+      "summary": "Vòng003 mở cho Codex, Gemini Web và Antigravity riêng (không phải Argon cũ): BRIEF/packet chung, prompt riêng, messages theo bên/lượt. Kiểm chứng bằng current source/test; giữ phản hồi gốc, revision/dirty state/fingerprint. Chuyển file thủ công; không BTC rows/questions/answers/secrets, không tự suy review là ủy quyền sửa runtime."
     }
   ]
 }

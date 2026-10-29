@@ -1,8 +1,61 @@
-# Trao đổi giữa người dùng Codex và Gemini
+# Thảo luận DataMate — Codex, Gemini Web và Antigravity
 
-Thư mục này dùng để đưa bối cảnh từ repo sang Gemini web, nhận phản biện rồi đưa về Codex kiểm chứng và triển khai. Mỗi vòng tập trung vào một vấn đề. Có thể dùng cùng cách này với LLM khác.
+**Vòng đang mở:** [003 — Khởi động thảo luận ba AI](rounds/003_three_ai_restart/README.md), ngày 2026-10-29. Chưa nhận phản hồi Gemini hoặc Antigravity. Bắt đầu cuộc trò chuyện mới ở mỗi bên; không cần nạp toàn bộ lịch sử.
+
+## Bắt đầu ngay
+
+1. Đọc [đề bài chung](rounds/003_three_ai_restart/BRIEF.md). Chủ đề mở đầu đề xuất là ưu tiên phát triển sau semantic audit v4; người dùng có thể đổi chủ đề trước khi gửi.
+2. **Gemini Web:** đính kèm `BRIEF.md` và `SOURCE_PACKET.md` của vòng003, rồi copy [prompt Gemini](rounds/003_three_ai_restart/GEMINI_START_PROMPT.md) vào chat mới.
+3. **Antigravity:** mở repo này trong agent, rồi copy [prompt Antigravity](rounds/003_three_ai_restart/ANTIGRAVITY_START_PROMPT.md) vào phiên mới. Nếu không truy cập repo được, dùng hai file đính kèm như Gemini.
+4. Lưu phản hồi đầu tiên vào `rounds/003_three_ai_restart/messages/GEMINI_RESPONSE_01.md` và `ANTIGRAVITY_RESPONSE_01.md`. Chỉ tạo file khi thực sự nhận phản hồi; giữ nguyên nội dung gốc.
+5. Nhắn Codex: **“Đọc phản hồi Gemini và Antigravity vòng003, kiểm chứng các điểm bất đồng và tổng hợp bước tiếp theo.”** Có thể đưa từng phản hồi về trước, không cần chờ đủ hai bên.
+
+## Vai trò và luồng tranh luận
+
+| Bên | Vai trò trong vòng mới | Đầu ra |
+|---|---|---|
+| Người dùng | Chọn mục tiêu, chuyển file giữa các công cụ, giao phạm vi triển khai | Định hướng/quyết định có attribution |
+| Codex | Nêu lập trường, kiểm tra source và test, đối chiếu phản biện; triển khai phần được giao | `CODEX_POSITION`, `CODEX_REVIEW`, thư trả lời |
+| Gemini Web | Phản biện đề bài và phương án từ packet được cung cấp | `GEMINI_RESPONSE` |
+| Antigravity | Một bên phản biện riêng; có thể kiểm chứng bằng repo nếu môi trường cho phép | `ANTIGRAVITY_RESPONSE` kèm lệnh/kết quả thực chạy |
+
+Lượt đầu: gửi cùng một đề bài cho hai bên để lấy ý kiến riêng. Lượt sau: Codex kiểm chứng rồi chuyển các điểm bất đồng cùng phản hồi gốc cho cả hai bên. AI nào cũng cần căn cứ có thể kiểm tra; số bên đồng ý không thay thế bằng chứng. Chỉ ghi kết luận được xác nhận vào [DECISIONS](DECISIONS.md), giữ [PROGRESS](../docs/PROGRESS.md) là trạng thái dự án duy nhất.
+
+Antigravity là bên mới theo yêu cầu người dùng, **không phải Argon** trong vòng002. Tên model chỉ ghi nếu xác định được. Phiên này chỉ chuẩn bị file local; chưa kết nối hay gửi nội dung tới hai công cụ.
+
+## Cấu trúc và quy ước
+
+```text
+ai_collaboration/
+  README.md, AGENTS.md       Điểm vào và quy tắc
+  DECISIONS.md              Sổ quyết định chung
+  archive/README.md         Chỉ mục hồ sơ cũ, không dùng làm bối cảnh hiện hành
+  rounds/
+    001_business_to_nlu/     Lịch sử, giữ nguyên đường dẫn
+    002_capability_readiness/ Lịch sử, giữ nguyên đường dẫn
+    003_three_ai_restart/
+      README.md, BRIEF.md    Trạng thái vòng và đề bài chung
+      SOURCE_PACKET.md      Snapshot nguồn/tài liệu + SHA256
+      GEMINI_START_PROMPT.md
+      ANTIGRAVITY_START_PROMPT.md
+      messages/             Lập trường, phản hồi gốc, kiểm chứng và thư trả lời
+  templates/DISCUSSION_REQUEST.md
+```
+
+Mỗi vòng dùng số tăng dần `NNN_<chu_de>`. Mỗi bên có số lượt riêng (`01`, `02`, ...), không ghi đè file cũ. Header ghi người gửi/nhận, ngày, vòng, lượt, file đang trả lời, revision và nguồn thực đọc. Xem [quy ước messages](rounds/003_three_ai_restart/messages/README.md) và [mẫu chung](templates/DISCUSSION_REQUEST.md).
+
+Packet chỉ dùng source, fixture tổng hợp và kết quả aggregate. Không đưa dữ liệu/câu hỏi/đáp án BTC, cache, báo cáo từng dòng hoặc secret ra ngoài. Fingerprint của source dùng UTF-8/LF; luôn ghi commit nền và dirty state. Khi source thay đổi, tạo packet revision mới và giữ bản đã gửi. Gemini Web cần file tự chứa; đường dẫn local không cấp quyền đọc repo. Antigravity chỉ đọc source/test trong vòng khởi động, chưa được giao sửa runtime hoặc rebuild cache.
+
+## Hồ sơ cũ
+
+[Chỉ mục lưu trữ](archive/README.md) phân biệt các snapshot cũ với vòng mới. Giữ nguyên file và đường dẫn lịch sử để bảo toàn phản hồi, diff, attribution và liên kết. `PROJECT_CONTEXT.md`, `GEMINI_HANDOFF.md`, `GEMINI_START_PROMPT.md` ở gốc là tài liệu vòng001; vòng003 dùng BRIEF và packet riêng.
+
+<details>
+<summary>Workflow Gemini và các mốc trước vòng003 — chỉ tra cứu lịch sử</summary>
 
 **Điểm tiếp tục 2026-10-29:** source inventory/verifier và audit tại `d99cac2`, executor ở `4fd268e`. Sau [Argon lượt02](rounds/002_capability_readiness/README.md), người dùng giao triển khai; [task mới](../docs/tasks/2026-10-29-selector-calendar-implementation.md) đã hoàn tất intent/span/preflight/calendar/grammar trong working tree, v4 đạt396/396, chưa commit/push hoặc LLM. Bản Flash, phản hồi và các snapshot bên dưới giữ nguyên làm lịch sử; handoff d99cac2 không chứa thay đổi mới.
+
+**Sau đó:** đã commit baseline local00043fa và hoàn tất [semantic audit v4](../docs/tasks/2026-10-29-v4-semantic-audit.md). Các khoảng trống mới về missingness/customer metadata/label bridge cần xử lý trước model; chưa sửa source trong lượt audit, chưa push hoặc có Gemini review code mới. Khi mở vòng review tiếp cần packet mới theo revision này, không dùng snapshot d99cac2 để chứng nhận source hiện tại.
 
 ## Cách mở vòng002 trước đây (lịch sử)
 
@@ -78,3 +131,5 @@ Tăng số lượt cho các phản hồi tiếp theo; lưu file mới cùng thư
 > Đọc GEMINI_RESPONSE.md của vòng 001, kiểm chứng từng nhận xét và viết phản hồi cho Gemini.
 
 > Dựa trên quyết định đã chốt ở vòng 001, triển khai … và cập nhật kết quả test vào hồ sơ trao đổi.
+
+</details>

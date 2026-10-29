@@ -41,6 +41,14 @@ def harness():
     ("business/sales.py", "import queryplan", "queryplan"),
     ("loader/build.py", "from queryplan import QueryExecutor", "queryplan"),
     ("business/sales.py", "def broken(:", "syntax"),
+    ("nlu/pipeline.py", "import modal", "dependency"),
+    ("nlu/pipeline.py", "import requests", "offline"),
+    ("nlu/pipeline.py", "from loader import load_business", "loader"),
+    ("nlu/pipeline.py", "from business import Answer", "business"),
+    ("nlu/pipeline.py", "import verification", "verification"),
+    ("nlu/pipeline.py", "gold = 'train/answers.jsonl'", "gold"),
+    ("business/sales.py", "import nlu", "nlu"),
+    ("queryplan/executor.py", "import nlu", "nlu"),
 ])
 def test_source_violation_has_location_and_remediation(harness, path, source, clue):
     errors = harness.check_source(path, source)
@@ -54,9 +62,39 @@ def test_source_violation_has_location_and_remediation(harness, path, source, cl
     ("evaluate/evaluate.py", "from collections import Counter\nimport json"),
     ("tests/test_example.py", "import business\nx = 'answers.jsonl'"),
     ("queryplan/executor.py", "from business import SalesMetrics\nfrom .contract import validate_plan"),
+    ("nlu/pipeline.py", "import json\nfrom queryplan import validate_plan\nfrom .parser import parse_plan"),
 ])
 def test_source_allowed_dependencies(harness, path, source):
     assert harness.check_source(path, source) == []
+
+
+@pytest.mark.parametrize("path,source,clue", [
+    ("run_public_submission.py", "import evaluate", "evaluator"),
+    ("run_public_submission.py", "from verification.runner import _scorer", "evaluator"),
+    ("tools/public_jobs.py", "import requests", "offline"),
+    ("tools/public_jobs.py", "gold = 'public_test/answers.jsonl'", "gold"),
+    ("run_public_submission.py", "open('submission.jsonl', 'w')", "reports"),
+    ("tools/public_jobs.py", "Path('../jobs.json').write_text('x')", "reports"),
+])
+def test_public_submission_runtime_rejects_evaluator_network_gold_and_unsafe_writes(
+        harness,path,source,clue):
+    errors = harness.check_source(path,source)
+    assert errors and any(clue in error for error in errors)
+    assert all(path in error and ':1:' in error for error in errors)
+
+
+@pytest.mark.parametrize("path,source", [
+    ("run_public_submission.py",
+     "from business import Rulebook\nfrom nlu import inspect_generation\n"
+     "from queryplan import QueryExecutor\nfrom tools.public_jobs import load_cache\n"
+     "split = Path('public_test')\nout = ROOT/'reports'/'submission.jsonl'"),
+    ("tools/public_jobs.py",
+     "from nlu.prompt import build_messages\nfrom tools.nlu_jobs import table_context\n"
+     "split = Path('public_test')\nout = ROOT/'reports'/'jobs.json'"),
+])
+def test_public_submission_runtime_allows_runtime_layers_and_public_split_literals(
+        harness,path,source):
+    assert harness.check_source(path,source) == []
 
 
 @pytest.mark.parametrize("name", [

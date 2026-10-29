@@ -15,6 +15,8 @@ Current source + the relevant split's rulebook + fresh checks take precedence ov
 
 Use `python` from the active project venv; on Windows without activation use `.\.venv\Scripts\python.exe`. See [setup](README.md) and [harness guide](docs/harness-engineering.md).
 
+Modal development: the user prefers maximum GPU parallelism to minimize waiting; this account allows **10 GPUs total**. Default to up to 10 nonempty shards, account for active jobs, and stop task-owned apps afterward. Use the existing Python 3.12 Modal env.
+
 | Command | Meaning |
 |---|---|
 | `python scripts/harness.py doctor` | Interpreter, pinned packages, optional local data readiness |

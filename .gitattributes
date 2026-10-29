@@ -2,3 +2,7 @@
 ai_collaboration/rounds/002_capability_readiness/GEMINI_RESPONSE_01.md -text whitespace=-blank-at-eol
 ai_collaboration/rounds/002_capability_readiness/GEMINI_ARGON_RESPONSE_01.md -text whitespace=-blank-at-eol
 ai_collaboration/rounds/002_capability_readiness/GEMINI_ARGON_RESPONSE_02.md -text whitespace=-blank-at-eol
+
+# Imported research prompt and round 003 transcripts retain their original bytes.
+ai_collaboration/ARGON_4_REASONING_PROMPT.md -text whitespace=-blank-at-eol,-blank-at-eof
+ai_collaboration/rounds/003_three_ai_restart/messages/*.md -text whitespace=-blank-at-eol,-blank-at-eof

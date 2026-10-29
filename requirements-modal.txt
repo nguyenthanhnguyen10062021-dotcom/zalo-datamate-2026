@@ -1,0 +1,2 @@
+# Dev-only SDK. Install in reports/dev_envs/modal, not the core project venv.
+modal==1.6.3

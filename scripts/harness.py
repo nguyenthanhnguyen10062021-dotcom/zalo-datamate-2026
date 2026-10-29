@@ -20,11 +20,12 @@ REQUIRED_DOCS = (
     "docs/harness-engineering.md", "docs/PROGRESS.md", "docs/validation.md",
     "docs/tasks/TEMPLATE.md", "loader/AGENTS.md", "business/AGENTS.md",
     "evaluate/AGENTS.md", "ai_collaboration/AGENTS.md",
-    "docs/context-index.json",
+    "docs/context-index.json", "nlu/AGENTS.md", "docs/nlu.md",
 )
 DEV_MODULES = {
     "evaluate", "tests", "surveys", "scripts", "load_all", "check_with_gold",
     "generalize_check", "verify_business", "verification", "inventory_capabilities", "verify_queryplans",
+    "tools", "run_nlu",
 }
 NETWORK_MODULES = {
     "socket", "http", "urllib", "requests", "httpx", "aiohttp", "openai",
@@ -62,14 +63,67 @@ def repository_paths(root: Path) -> list[str]:
     ).split("\0"))))
 
 
+def _literal_path(node: ast.AST) -> str | None:
+    if isinstance(node,ast.Constant) and isinstance(node.value,str):
+        return node.value
+    if (isinstance(node,ast.Call) and isinstance(node.func,ast.Name)
+            and node.func.id == "Path" and node.args
+            and isinstance(node.args[0],ast.Constant) and isinstance(node.args[0].value,str)):
+        return node.args[0].value
+    return None
+
+
+def _unsafe_literal_write(node: ast.Call) -> str | None:
+    path = mode = None
+    if isinstance(node.func,ast.Name) and node.func.id == "open" and node.args:
+        path = _literal_path(node.args[0])
+        mode = node.args[1].value if (len(node.args) > 1 and isinstance(node.args[1],ast.Constant)) else None
+        for keyword in node.keywords:
+            if keyword.arg == "mode" and isinstance(keyword.value,ast.Constant):
+                mode = keyword.value.value
+    elif isinstance(node.func,ast.Attribute) and node.func.attr == "open":
+        path = _literal_path(node.func.value)
+        mode = node.args[0].value if (node.args and isinstance(node.args[0],ast.Constant)) else None
+        for keyword in node.keywords:
+            if keyword.arg == "mode" and isinstance(keyword.value,ast.Constant):
+                mode = keyword.value.value
+    elif isinstance(node.func,ast.Attribute) and node.func.attr in {"write_text","write_bytes"}:
+        path,mode = _literal_path(node.func.value),"w"
+    if not path or not isinstance(mode,str) or not set(mode) & set("wax+"):
+        return None
+    normalized = path.replace("\\","/")
+    return None if normalized.startswith("reports/") else path
+
+
 def check_source(path: str, source: str) -> list[str]:
     errors = []
     try:
         tree = ast.parse(source, filename=path)
     except SyntaxError as exc:
         return [f"{path}:{exc.lineno}: syntax: {exc.msg}; fix Python syntax."]
+    submission_runtime = path in {"run_public_submission.py","tools/public_jobs.py"}
+    if submission_runtime:
+        for node in ast.walk(tree):
+            location = f"{path}:{getattr(node, 'lineno', 1)}:"
+            if isinstance(node,(ast.Import,ast.ImportFrom)):
+                modules = ([alias.name.split(".")[0] for alias in node.names]
+                           if isinstance(node,ast.Import) else [(node.module or "").split(".")[0]])
+                for module in modules:
+                    if module in NETWORK_MODULES:
+                        errors.append(f"{location} offline: {module}; keep network clients outside public submission runtime.")
+                    if module == "evaluate" or (isinstance(node,ast.ImportFrom)
+                            and (node.module or "").startswith("verification.runner")):
+                        errors.append(f"{location} evaluator: scoring/gold helpers cannot enter public submission runtime.")
+            if (isinstance(node,ast.Constant) and isinstance(node.value,str)
+                    and "answers.jsonl" in node.value.replace("\\","/").lower()):
+                errors.append(f"{location} gold: public submission runtime must never reference answers.jsonl.")
+            if isinstance(node,ast.Call):
+                unsafe = _unsafe_literal_write(node)
+                if unsafe is not None:
+                    errors.append(f"{location} reports: direct write to {unsafe!r} is outside ignored reports/.")
+        return errors
     layer = path.split("/")[0]
-    if layer not in {"loader", "business", "queryplan", "evaluate"} or Path(path).name.startswith("test_"):
+    if layer not in {"loader", "business", "queryplan", "evaluate", "nlu"} or Path(path).name.startswith("test_"):
         return errors
     for node in ast.walk(tree):
         location = f"{path}:{getattr(node, 'lineno', 1)}:"
@@ -89,9 +143,13 @@ def check_source(path: str, source: str) -> list[str]:
                 elif (module in DEV_MODULES
                       or layer == "loader" and module in {"business", "queryplan"}
                       or layer == "business" and module in {"loader", "queryplan"}
-                      or layer == "queryplan" and module == "loader"):
+                      or layer == "queryplan" and module == "loader"
+                      or layer in {"loader", "business", "queryplan"} and module == "nlu"
+                      or layer == "nlu" and (module in {"loader", "business"}
+                          or module not in sys.stdlib_module_names | {"queryplan"}
+                          and not (isinstance(node, ast.ImportFrom) and node.level == 1))):
                     errors.append(f"{location} dependency: {layer} cannot import {module}; pass data through the public API.")
-        if layer in {"loader", "business", "queryplan"} and isinstance(node, ast.Constant) and isinstance(node.value, str):
+        if layer in {"loader", "business", "queryplan", "nlu"} and isinstance(node, ast.Constant) and isinstance(node.value, str):
             if "answers.jsonl" in node.value.replace("\\", "/").lower():
                 errors.append(f"{location} gold: answers.jsonl belongs in verification tools, never {layer}/.")
     return errors

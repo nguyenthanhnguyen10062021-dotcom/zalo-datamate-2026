@@ -2,9 +2,73 @@
 
 Ngày theo Asia/Saigon. Nhánh làm việc: `VuongNguyen`.
 
+## Kết quả BTC do người dùng báo — public v3 ngày 2026-10-29
+
+Người dùng đã nộp v3 và báo **0.10400**, tăng **0.30600** so v1 **-0.20200**. Đã kiểm lại hash file v3 đúng bản bàn giao:1000dòng,128non-abstain/872abstain. Với công thức `(correct-wrong)/1000`, nếu BTC chấm đủ128phản hồi đúng protocol thì suy ra **116correct/12wrong**, precision trên phần trả lời **90,625%**. Đây là suy luận từ aggregate score người dùng cung cấp, không phải public gold hoặc xác nhận từng câu.
+
+Train pilot90 có54abstain:39semantic_rejected,11unsupported_plan,2unresolved_entity,1unsupported_capability,1invalid_plan. Question/plan-only review thấy cả lỗi NLU thật (filter tự thêm, sai comparison) và false rejection do biến thể ngôn ngữ của AOV/comparison/time. Chưa mở gold để gán correct cho các ứng viên hồi phục, chưa thay gate hoặc chạy GPU mới. Next: audit/freeze reference trên development, kiểm chứng thay đổi ngôn ngữ/grounding trên train development/calibration trước khi mở coverage; giữ v3 nguyên, không suy12public errors hoặc nới gate theo leaderboard.
+
+## Semantic safety sau public score âm — hoàn tất đợt 1 ngày 2026-10-29
+
+Người dùng báo public v1 **-0.20200**, giao cải thiện và cho phép Modal rerun không yêu cầu trần chi phí. Đã thêm gate offline kiểm question/plan trước dispatch, tích hợp cả hai runner và replay predictions có integrity. [Task và evidence](tasks/2026-10-29-semantic-safety.md).
+
+- Replay cùng632evaluation predictions:303correct/182wrong/147abstain → **203/0/429**, PA19,15%→**32,12%**; chặn182sai và mất100đúng. Retrospective diagnostic có prior exposure, không blind/public guarantee. Development90 v1:10/9/71→7/0/83.
+- Prompt3 giữ model7B/schema/sampling/gate: development90 **36correct/0wrong/54abstain**; evaluation632 **233/0/399**, PA **36,87%**, tăng30correct so chỉ thêm gate. Có1truncated generation trong632, giữ abstain; không public guarantee hoặc holdout độc lập.
+- File được chọn: **`reports/public_submission/v3/submission.jsonl`**,1000dòng/1000ID đúng thứ tự, UTF-8 khôngBOM,46.926byte, validator/integrityPASS. **128answers/872abstain** (number112/percent8/list6/unanswerable2), score ceiling0,128. SHA-256 `38a59d278631f91d28a4c9314b92bf63d3f196504e0feba3a81b8c153e49a58a`. V2 replay97answers giữ làm ablation, không chọn để nộp. Không có gold public/PA.
+- Public10GPU theo chỉ thị mới;2worker kẹt download rồi timeout900s. Recovery8GPUrảnh cho200request chưa có output, tổng<=10GPU; merge816primary+184secondary,16overlap chọn primary cố định,1000unique/stop.17worker metadata cùng một bộ model-file hashes. Mọi app đã stopped/tasks0; receipts/timeouts giữ nguyên. Đã lưu mặc định max10GPU vào root/tools AGENTS.
+- Full cuối **688passed/2deselected**; data profile trước prompt/parallel PASS full683/2deselected,local1passed/1skip helper cũ,selected409/409. Business/loader/queryplan/scorer không sửa; historical ledgers/submissionv1 hash không đổi. Không commit/push hoặc upload portal.
+- Người dùng đã nộp **v3** và báo score0.10400 (mục mới nhất phía trên). Độ phủ public còn12,8%; đợt tiếp cần mở capability/grounding bằng train development/calibration, không chọn threshold hoặc sửa câu theo public feedback. Docker/code-generation/domain mới chưa triển khai.
+
+## File public submission v1 — hoàn tất 2026-10-29
+
+Đã tạo `reports/public_submission/v1/submission.jsonl` (ignored): **1.000 dòng / 1.000 ID duy nhất**, đúng thứ tự public questions, UTF-8 không BOM, validator PASS. Phân bố: number529, percent115, list54, unanswerable48, abstain254. Không có public gold/PA; file chưa upload, chưa Docker. [Task/evidence](tasks/2026-10-29-public-submission-file.md).
+
+Cache public mới14business/0crash; frozen jobs1000, prompt/schema v2, Qwen2.5-7B revision cũ. Batch gốc đủ1000generation; người dùng duyệt tăng tốc tối đa10GPU, pool bổ sung tối đa7GPU được dừng khi batch gốc hoàn tất,118generation bổ sung không dùng để chọn đáp án. Mọi app đã stopped/tasks0; local executor chạy8CPUworker, giữ thứ tự và error sidecar. Harness cuối **640passed/2deselected**, data gate trướccloud PASS409/409selected. Baseline ledger không đổi, không commit/push. Next action: người dùng upload file để test; không dùng public feedback để fitting/tuning.
+
+## Baseline NLU/Modal — đã chạy evaluation 2026-10-29
+
+Người dùng đã chấp nhận [plan chi tiết](tasks/2026-10-29-nlu-modal-baseline-plan.md), giao Codex tự quyết định/triển khai; Modal profile **vuonghungnguyen07**, tối đa **25 USD** cho đợt thử đầu. Baseline private batch với Qwen2.5-7B-Instruct đã chạy xong trên Modal; đây chưa phải public endpoint hay runner nộp bài offline.
+
+- Đã thêm core `nlu/`: strict parser, prompt, generation/plan sidecar và public executor adapter; AST guard bảo vệ nlu và cấm lower layers import nlu. Schema v2 khóa operation/expected type/ranking/filter scope và tham số theo `period.kind`; pilot v1 có57/90 invalid-plan, evaluation v2 còn5/632, đều do revenue_share thiếu filter. Không auto-repair/last-block, không Modal SDK trong core hoặc đổi business/queryplan.
+- Đã freeze train protocol3000câu,18/6/6business (development1815/calibration553/evaluation632). Pilotdevelopment90, evaluation632jobs;12question-onlyevaluationreferencesfreeze trướcmodeloutputs/gold, không blind/fold-clean.
+- Evaluation cố định đủ **632/632 generation, 0 backend error**, JSON-valid632, contract-valid627. Local execution/scoring: **303 correct / 182 wrong / 147 abstain**, PA phạt `(correct-wrong)/N` **19,15%**, coverage **76,74%**, precision answered **62,47%**. Reference question-only:6/12 literal plan match, chưa adjudicate equivalence; không suy semantic accuracy từ literal match.
+- Worker dùng revision model `a09a35458c702b33eeacc393d103063234e8bc28`, vLLM0.21.0/Python3.12.1 trên NVIDIAA10;632 output trong580giây local elapsed, model load160,77giây. App `ap-JlVK91P8vjr6OD7v5Cbe4D` đã stopped/tasks0. Ledger đủ4/4call, reservation tổng **24/25USD** gồm setup và5USDreserve; actual invoice/service meter chưa quan sát được nên không gọi24USD là tiền đã chi.
+- Targeted NLU **40 passed**; harness full cuối **603 passed, 2 deselected**. Cache sửa lỗi được dùng tường minh; gold/scorer không lên worker, predictions freeze trước mở gold. Next action: error analysis trên development/calibration, xử lý entity/label grounding và comparison compatibility; cần scope/ngân sách mới trước GPU call khác hoặc offline submission runner.
+
+## Sửa missingness cache và tên khách — 2026-10-29
+
+Người dùng giao trực tiếp sửa đúng hai lỗi rồi dừng báo tiến độ. Đã sửa writer dùng nullable string để bảo toàn missingness/literal strings; join bổ sung tên thiếu khi mã khách khớp danh mục duy nhất. Giữ tên trên đơn/tên gốc, định danh, khách lẻ và duplicate-key policy; không NLU hoặc thay mapping/grammar/business/evaluator.
+
+[Task và acceptance](tasks/2026-10-29-loader-missingness-customer-name.md) đã hoàn tất: 9 ca synthetic mới RED→GREEN; targeted **165 passed**, full **554 passed / 2 local_data deselected**. Data profile PASS: local_data 1 passed / 1 skip helper cũ; baseline cache cũ 409/409.
+
+Cache train revision riêng `reports/loader_fixes_20261029/cache`: **30 doanh nghiệp, 0 crash**. Replay v4 **396/396 compared/matched**, ngoài selection 2604/3000; baseline riêng **417 selected / 8 skipped / 409 compared/matched**, 0 lỗi. Audit giữ **61 annotation / 46 plan / 15 not_run**: nay **41 matched / 1 mismatch / 4 abstain**, một mismatch customer-ranking được sửa, không mất ca. So 150 bảng canonical chỉ thấy khôi phục missingness và bổ sung tên; 661 file được bảo vệ không đổi. Không cộng mẫu số hoặc suy PA toàn train/model.
+
+**Đã dừng theo yêu cầu.** Giữ cache mặc định và annotations/manifests cũ; cache mới cần truyền `--cache` tường minh. Chưa promote cache, rebuild public test, triển khai NLU hoặc commit/push. Các khoảng trống mapping/label bridge còn lại ở ngoài phạm vi.
+
+Các mốc audit/thảo luận phía dưới là trạng thái trước bản sửa hai lỗi này.
+
+## Thảo luận ba AI — mở vòng003 ngày 2026-10-29
+
+Đã tổ chức [workflow Codex/Gemini Web/Antigravity](../ai_collaboration/README.md) và [vòng003 mới](../ai_collaboration/rounds/003_three_ai_restart/README.md): cùng BRIEF/source packet, prompt riêng và messages theo bên/lượt. Antigravity là bên mới, không phải Argon vòng002. [Chỉ mục lưu trữ](../ai_collaboration/archive/README.md) tách hồ sơ cũ khỏi luồng hiện hành, giữ nguyên bytes và đường dẫn lịch sử. Chưa gửi ra ngoài, chưa nhận phản hồi hoặc đồng thuận; không sửa runtime/cache/model trong tác vụ tổ chức này.
+
+Next action thảo luận: người dùng gửi hai file BRIEF/SOURCE_PACKET và prompt tương ứng sang hai phiên mới, rồi đưa phản hồi về để Codex kiểm chứng. Chủ đề ưu tiên sau audit v4 là đề xuất mở đầu, chưa giao triển khai các sửa dữ liệu. Trạng thái source/audit dưới đây được giữ nguyên.
+
+Kiểm tác vụ tổ chức: full **545 passed, 2 local_data deselected**; liên kết7tài liệu mới và18source fingerprint đạt, lịch sử không đổi. Không chạy lại data/gold.
+
+## Mốc bàn giao trước vòng003
+
 Người dùng yêu cầu commit/push inventory-verifier và audit annotation, đồng thời mở vòng phản biện Gemini mới. Xác định revision bàn giao bằng git log; các ghi chú “chưa commit/push” bên dưới thuộc thời điểm kiểm chứng trước bàn giao.
 
 Source inventory/verifier/audit đã commit tại **`d99cac2`**. Sau [Argon lượt02](../ai_collaboration/rounds/002_capability_readiness/README.md), người dùng giao triển khai bước tiếp; bản Flash và phản hồi/review cũ được giữ riêng làm lịch sử.
+
+## Audit ngữ nghĩa v4 — mới nhất 2026-10-29
+
+- Đã chốt code/review trước audit bằng commit local **00043fa** trên VuongNguyen, chưa push. Source runtime/selector không đổi trong lượt audit; [task contract và findings](tasks/2026-10-29-v4-semantic-audit.md).
+- Freeze61câu:37selected/8ops,12unparsed từ customer candidate pool110 và12từ share pool97. Reference question-only freeze trước xem candidate/catalog/gold; cùng AI tác giả, có prior train/source/aggregate exposure, không blind/human/independent adjudication.
+- Selected37: reference/candidate JSON trùng37/37, đáp án37matched. Unparsed24:9reference plans,6capability gaps,5công nợ false positives,4cần catalog xác định group-kind. Không sửa grammar hoặc cố đạt quotaAPI.
+- Execution46reference plans: **42compared,40matched,2mismatch,4abstained,0execution_errors**;15annotation không plan giữ not_run. Riêng9unparsed plans:3matched,2mismatch,4abstain. CLI evaluator xác nhận40/2/4; adapter local lượt đầu sai API đã vô hiệu hóa, `scoring_v2.json` dùng lại predictions freeze là report hợp lệ.
+- Phát hiện cần xử lý trước model: canonical thiếu tên khách sau join; nhóm khách chưa map còn cần bằng chứng README; canonical-label bridge thiếu; đặc biệt `load_all.to_parquet` biến pd.NA thành literal string đã tái hiện bằng fixture tổng hợp. Bốn group-kind giải thích thêm bằng catalog, hai prescription predicate cần grounding contract; giữ annotations gốc.
+- Next action đề xuất: sửa serialization missingness và customer-name join bằng synthetic tests, rebuild **cache revision riêng**, replay v4 và baseline riêng; mapping group/label bridge chốt riêng theo evidence. Chưa sửa các lỗi mới, chưa LLM, chưa PA toàn train;396/396 vẫn là bằng chứng selected snapshot cũ, không phủ2API này. Full mới545passed/2deselected; chưa chạy lại whole-data baseline409 trong lượt audit.
 
 ## Triển khai sau Argon — trạng thái mới nhất 2026-10-29
 

@@ -51,8 +51,9 @@ def to_parquet(df: pd.DataFrame, path: Path) -> None:
             if len(nonnull) and num.notna().all() and not nonnull.map(lambda v: isinstance(v, str)).any():
                 df[c] = pd.to_numeric(df[c], errors="coerce")
             else:
-                df[c] = df[c].map(lambda v: None if v is None or (isinstance(v, float) and v != v) else str(v)
-                                  ).astype("string")
+                # Nullable string conversion preserves all missing scalars, including
+                # pd.NA/NaT, without interpreting literal strings such as "<NA>".
+                df[c] = df[c].astype("string")
     df.to_parquet(path, index=False)
 
 
