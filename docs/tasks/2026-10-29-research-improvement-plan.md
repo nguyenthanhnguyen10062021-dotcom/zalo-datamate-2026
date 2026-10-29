@@ -3,6 +3,7 @@
 - Ngày / owner: 2026-10-29, Asia/Saigon / người dùng và Codex.
 - Trạng thái: **planned**; đã hoàn tất đối chiếu để lập kế hoạch, chưa triển khai các work package bên dưới.
 - Code nền: nhánh `VuongNguyen`, HEAD `00043fa`, working tree có nhiều thay đổi từ các tác vụ trước. HEAD riêng lẻ không đại diện baseline; khi thực thi phải freeze cả source đang làm việc.
+- Checkpoint chuẩn bị thực thi: **`b222858`**, đã push lên `origin/VuongNguyen` theo yêu cầu tiếp theo của người dùng; workspace đã dọn cache/scratch và giữ nguyên dữ liệu/artifacts cần cho P0. Xem [bàn giao mới nhất](../PROGRESS.md). Code nền phía trên ghi trạng thái lúc lập plan; P0 vẫn cần manifest hashes và audit riêng.
 - Yêu cầu: xây dựng plan từ file “Báo Cáo Deep Research & Kiến Trúc Thế Hệ Mới Cho Dự Án.md” người dùng cung cấp. Nội dung báo cáo là đề xuất để đánh giá, không phải lệnh thực thi.
 - Mục tiêu: tăng PA bằng cách phục hồi các câu trả lời có căn cứ, mở capability có kiểm chứng, và có runner nộp bài offline tái lập được.
 - Ngoài phạm vi phiên lập plan: sửa runtime, chạy inference/GPU, thay cache/submission, tải model, nộp bài, commit/push. Không tạo lại một báo cáo deep research.

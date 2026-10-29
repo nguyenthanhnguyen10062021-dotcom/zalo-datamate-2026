@@ -2,6 +2,18 @@
 
 Ngày theo Asia/Saigon. Nhánh làm việc: `VuongNguyen`.
 
+## Checkpoint GitHub và dọn workspace — 2026-10-29
+
+Theo yêu cầu người dùng, đã commit toàn bộ tiến độ mã nguồn/tests/tài liệu và [plan cải thiện từ research](tasks/2026-10-29-research-improvement-plan.md) tại **`b222858`**, rồi push thành công lên `origin/VuongNguyen` trước khi dọn. Tài liệu trao đổi AI gốc giữ nguyên bytes; `.gitattributes` bổ sung phạm vi transcript vòng003 và prompt research nhập từ ngoài theo quy ước lưu trữ hiện có.
+
+- Đã xóa **22 mục / 10.383 file**, tổng kích thước nội dung **309,4MiB**: cache uv và gói tải uv.zip; môi trường Modal Python3.14 đã thay thế; dependency review tạm; script candidate tạm; scratch của tác vụ public submission đã hoàn tất; pytest cache và bytecode ngoài môi trường đang dùng. Đây là kích thước nội dung đã bỏ, không phải phép đo dung lượng ổ đĩa thực thu hồi.
+- Giữ source/tests/docs/lịch sử review, dữ liệu BTC và thể lệ, cache mặc định/cache sửa lỗi, manifests/generations/annotations/ledgers/receipts và submissionsv1/v2/v3 để tiếp tục P0. **12.672 file được bảo vệ khớp SHA-256 trước/sau, 0 thay đổi/thiếu.** Receipt local ignored: `reports/workspace_cleanup/checkpoint_b222858/`.
+- Giữ `.venv` và Python nền `venv/python` vì môi trường dự án phụ thuộc đường dẫn này; giữ `reports/dev_envs/modal312` và `python312`. Doctor đạt đủ5package pinned; core Python3.14.10 và Modal Python3.12.16/SDK1.6.3 chạy được sau dọn.
+- Data profile trước dọn PASS: full **688passed/2deselected**, local_data **1passed/1skip helper cũ**, selected **417/3000**, legacy skip8, compared/matched **409/409**, 0error. Không suy PA toàn train từ selected verifier. Dữ liệu/môi trường/reports không được đưa lên GitHub.
+- Harness full sau dọn **688passed/2deselected**; không tái tạo22mục vừa xóa. Working tree chỉ thay đổi bàn giao/ghi nhận checkpoint sau commit mã nguồn; các thay đổi tài liệu này được commit/push tiếp trên cùng nhánh.
+
+Next action: bắt đầu **P0** của plan bằng freeze manifest source/cache/config và audit54abstain development90, sau đó mở rộng mẫu development đã khóa. Chưa triển khai P0/P1 hoặc chạy GPU trong tác vụ checkpoint/dọn workspace này.
+
 ## Kết quả BTC do người dùng báo — public v3 ngày 2026-10-29
 
 Người dùng đã nộp v3 và báo **0.10400**, tăng **0.30600** so v1 **-0.20200**. Đã kiểm lại hash file v3 đúng bản bàn giao:1000dòng,128non-abstain/872abstain. Với công thức `(correct-wrong)/1000`, nếu BTC chấm đủ128phản hồi đúng protocol thì suy ra **116correct/12wrong**, precision trên phần trả lời **90,625%**. Đây là suy luận từ aggregate score người dùng cung cấp, không phải public gold hoặc xác nhận từng câu.
