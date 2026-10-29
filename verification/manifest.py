@@ -108,7 +108,7 @@ def validate_manifest(manifest, questions_path, rulebook_path):
         if entry['selection'] == 'selected':
             try:
                 if validate_plan(entry['plan']) != entry['plan'] or entry['plan']['status'] != 'supported':
-                    raise ManifestError('manifest plan must be normalized and executable')
+                    raise ManifestError('manifest plan must be normalized and schema-valid')
             except PlanValidationError as exc:
                 raise ManifestError(f'invalid manifest plan: {exc}') from exc
         elif entry['selection'] != 'unparsed' or entry['plan'] is not None:

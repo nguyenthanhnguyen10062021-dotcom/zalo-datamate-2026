@@ -81,7 +81,7 @@ Hàm chính: `from loader import load_business; res = load_business("train/data/
 
 Trao đổi với Gemini web hoặc LLM khác: xem [ai_collaboration/README.md](ai_collaboration/README.md). Gói bàn giao có bối cảnh, source snapshot, yêu cầu thảo luận và chỗ lưu phản hồi để Codex kiểm chứng.
 
-Executor v1 có **121 test tổng hợp**. Đã thêm [inventory/verifier độc lập legacy](docs/capability-verification.md): manifest chọn 126/3000, chấm 125 khớp/125 compared, còn 1 abstain trong selected. Harness full mới nhất **478 passed, 2 local_data deselected**. Đây là đánh giá hồi cứu grammar+executor, không phải PA model/NLU. Các số harness/business bên dưới thuộc baseline trước executor.
+Đã hoàn tất [triển khai sau Argon](docs/tasks/2026-10-29-selector-calendar-implementation.md): intent/span, public capability preflight, comparison neo tháng/quý và grammar có giới hạn. [Verifier độc lập legacy](docs/capability-verification.md) v4 chọn **396/3000**, compared/matched **396/396**, 0 mismatch/abstain/execution_errors, chạm8API; top_customers/share còn synthetic-only. Harness full **545 passed, 2 local_data deselected**; bare **546 passed, 1 skip cũ**. Baseline riêng409/409 vẫn đạt. Đây là hồi cứu grammar+executor, chưa PA model/NLU; code mới chưa commit/push. Các số harness/business bên dưới thuộc baseline trước executor.
 
 Kiểm chứng harness ngày 2026-10-29: toàn bộ suite **302 test đạt, 1 test cũ bỏ qua**; full profile dùng cho CI chạy local **301 đạt, 2 ca cần dữ liệu bị loại**. Lượt verifier mới khớp gold **409/409 câu đối chiếu được**, 0 lỗi, trên tập chọn lọc. Bộ 409 chạm 3/10 API, chưa phải PA toàn bộ train hoặc kết quả của tầng NLU. Xem [phạm vi và bằng chứng](docs/validation.md).
 

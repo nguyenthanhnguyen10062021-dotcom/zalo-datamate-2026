@@ -2,6 +2,8 @@
 
 `queryplan/` nhận JSON plan đã được tầng trước trích xuất, kiểm tra và gọi public API `business/`. Bản này chưa hiểu câu hỏi tiếng Việt, chưa tích hợp model và chưa có runner submission. Không thêm dependency; validator Python thực hiện contract dưới đây, chưa có JSON Schema cho constrained decoding.
 
+Sau review Argon, có public `check_capability(normalized_plan) -> None` và `UnsupportedCapability`. Caller phải gọi `validate_plan` trước; checker không đọc bảng hoặc sửa plan. `QueryExecutor` dùng cùng checker và vẫn giữ `invalid_plan` khác `unsupported_capability`. Qua schema không có nghĩa capability được hỗ trợ hoặc tên đã resolve.
+
 ## Gọi executor
 
 Caller đưa bảng chuẩn vào `tables`, cùng `Rulebook`, ngày câu hỏi và calendar đúng split. Loader/cache loading nằm ngoài executor. Dữ liệu chỉ đọc.
@@ -51,6 +53,10 @@ Mọi object phải đủ key như ví dụ; không nhận key lạ. Trường k
 Period luôn có kind,n,month,quarter,year,start_date,end_date. Các kind today/yesterday/this_week/previous_week/this_month/previous_month/previous_month_same_elapsed/year_to_date không cần tham số; last_days cần n; month cần month và year tùy chọn; quarter tương tự; tet cần year; date_range cần hai ngày ISO tồn tại và không đảo đầu/cuối. Các tham số không dùng phải null.
 
 Comparison chỉ dùng cho revenue_growth, nhận yesterday/previous_week/previous_month/previous_month_same_elapsed/month/quarter/tet/date_range/before_period. `before_period` chỉ áp dụng khi kỳ chính là tet. Comparison same_elapsed chỉ áp dụng với this_month. Growth this_month có comparison null sẽ dùng cùng số ngày tháng trước theo rulebook; growth với kỳ chính khác phải có comparison. `previous_month` tường minh nghĩa cả tháng trước: tầng NLU tương lai phải chọn theo câu hỏi, không tự đổi mặc định.
+
+Extension additive của plan version `1.0`: comparison nhận thêm **previous_calendar_month** (main.kind phải month) và **previous_calendar_quarter** (main.kind phải quarter), mọi tham số n/month/quarter/year/start_date/end_date phải null. Resolve kỳ chính với Rulebook/as_of_date trước, rồi lấy cả tháng/quý dương lịch liền trước. Ví dụ main month1/year2024 → comparison12/2023; main month12/year null, as_of2026-03-04 → primary12/2025 rồi comparison11/2025. Tháng3/2024 so tháng2 lấy hết29 ngày; không dùng khoảng lùi cùng độ dài. Kỳ so sánh trước năm1 báo period_error ở stage period trước đọc bảng.
+
+Các relative kinds cũ vẫn neo theo **as_of_date**, gồm previous_month và yesterday; không tự chuyển sang neo primary. Không có blanket guard cấm kỳ cố định so với as_of-relative: date_range ngày1/3 so yesterday theo as_of4/3 vẫn hợp lệ. Selector/NLU chọn calendar kind khi ý câu là tháng/quý liền trước kỳ chính. Không đổi before_period/Tết, same_elapsed hoặc clipping partial-period trong business. Validator cũ chưa biết new kinds sẽ reject an toàn; schema/model adapter tương lai phải đồng bộ capability extension và fingerprint source, không suy từ string version đơn lẻ.
 
 Resolver gọi `Periods` hiện hành, không tự tính lại lịch, không tra Internet. Tháng/quý thiếu năm, kỳ giao một phần và giới hạn as_of_date theo [API thời gian](business.md). Lỗi/mất calendar báo period_error; rule chưa hỗ trợ báo unsupported_rule.
 

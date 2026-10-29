@@ -10,8 +10,9 @@ PERIOD_RE = re.compile('|'.join(f'(?P<{kind}>{pattern})' for kind, pattern in (
     ('date_range', r'tu ngay \d{4}-\d{2}-\d{2} den(?: het)? ngay \d{4}-\d{2}-\d{2}'),
     ('date', r'ngay \d{4}-\d{2}-\d{2}'),
     ('today', r'hom nay'), ('yesterday', r'hom qua'),
-    ('this_week', r'tuan nay'), ('previous_week', r'tuan truoc'),
-    ('this_month', r'thang nay'), ('previous_month', r'thang truoc'),
+    ('this_week', r'tuan nay'), ('previous_week', r'tuan (?:truoc|roi)'),
+    ('this_month', r'thang nay'), ('previous_month', r'thang (?:lien )?truoc(?: do)?'),
+    ('previous_quarter', r'quy (?:lien )?truoc(?: do)?'),
     ('year_to_date', r'tu dau nam den nay'),
     ('last_days', r'\d+ ngay (?:gan nhat|qua)'),
     ('month', r'thang \d{1,2}(?:\s*(?:/|nam)\s*\d{4})?'),
@@ -27,10 +28,66 @@ def _fold(text):
     return ''.join(c for c in text if unicodedata.category(c) != 'Mn')
 
 
+def _fold_spans(text):
+    """Keep original character spans even when folding changes string length."""
+    folded, spans = [], []
+    for index, character in enumerate(text):
+        value = _fold(character)
+        folded.append(value)
+        spans.extend([(index, index + 1)] * len(value))
+    return ''.join(folded), spans
+
+
+def _quantity_unit_span(text):
+    folded, spans = _fold_spans(text)
+    matches = list(re.finditer(r'\bban\s+(?:duoc\s+)?bao\s+nhieu\s+(\w+)', folded))
+    if len(matches) != 1:
+        return None
+    start, end = matches[0].span(1)
+    left, right = spans[start][0], spans[end - 1][1]
+    return text[left:right].casefold(), left, right
+
+
+def _protect_unquoted_groups(text, mentions):
+    """Only explicit group-kind labels ending at the share verb have a boundary."""
+    folded, spans = _fold_spans(text)
+    pattern = r'\bnhom\s+(?:hang|khach)\s+([^"\n]+?)\s+(?=(?:chiem|dong\s+gop)\b)'
+    for match in reversed(list(re.finditer(pattern, folded))):
+        label = match[1].strip()
+        if (label in mentions or PERIOD_RE.search(label)
+                or re.search(r'\b(?:va|hoac|nhom|kenh|thanh toan|ca sang|ca chieu)\b', label)):
+            continue
+        start, end = match.span(1)
+        left, right = spans[start][0], spans[end - 1][1]
+        token = f'x{len(mentions)}x'
+        mentions[token] = text[left:right].strip()
+        text = text[:left] + token + text[right:]
+    return text
+
+
+def _language_forms(text):
+    # Fixed linguistic variants only. Entity and unit spans are already protected.
+    for pattern, replacement in (
+        (r'\b(?:dthu|doanhthu)\b', 'doanh thu'),
+        (r'\bhqua\b', 'hom qua'), (r'\bthangs\b', 'thang'),
+        (r'\bgaanf\b', 'gan'), (r'\bhangf\b', 'hang'),
+        (r'\bth truoc\b', 'thang truoc'), (r'\bso vs\b', 'so voi'),
+    ):
+        text = re.sub(pattern, replacement, text)
+    return text
+
+
 def _clean(text):
     # These connectors only join a recognized time/filter to the metric phrase.
-    return ' '.join(re.sub(r'\b(?:ty trong|ti trong|trong|vao|cua)\b',
+    text = re.sub(r'\b(?:(?:ca|toan bo)\s+)?cua hang\b', ' ', text)
+    text = ' '.join(re.sub(r'\b(?:ty trong|ti trong|trong|vao|cua)\b',
                           lambda m: m[0] if m[0] in ('ty trong', 'ti trong') else ' ', text).split())
+    text = re.sub(r'^(?:(?:cho toi biet|cho minh hoi|xem giup|coi gium|e)\s+)+', '', text)
+    previous = None
+    while previous != text:
+        previous = text
+        text = re.sub(r'\s+(?:la gi|vay|ta|z|do|nha|nhe)$', '', text)
+    return text
 
 
 def _period(text):
@@ -57,9 +114,12 @@ def _period(text):
 
 def _intent(text):
     patterns = (
-        ('revenue_growth', r'doanh thu (?:tang|giam|thay doi|tang truong)(?: bao nhieu)? (?:phan tram|%)'),
+        ('revenue', r'(?:ban|thu) (?:duoc )?(?:tong cong )?bao nhieu (?:tien|dong|vnd)'),
+        ('order_count', r'ban (?:duoc )?bao nhieu don(?: hang)?'),
+        ('revenue_growth', r'doanh thu (?:tang|giam|tang hay giam|thay doi|tang truong)(?: bao nhieu)? (?:phan tram|%)'),
         ('revenue_share', r'(?:ty trong|ti trong|ty le) doanh thu(?: la bao nhieu| bao nhieu(?: phan tram)?)?'),
         ('revenue_share', r'doanh thu chiem bao nhieu phan tram'),
+        ('revenue_share', r'(?:chiem|dong gop) bao nhieu (?:phan tram|%) doanh thu'),
         ('cancellation_rate', r'(?:ty le|ti le|phan tram) don(?: hang)? (?:bi )?huy(?: la bao nhieu(?: phan tram)?| bao nhieu(?: phan tram)?)?'),
         ('average_order_value', r'gia tri trung binh (?:mot|moi) don(?: hang)?(?: la bao nhieu)?'),
         ('cancelled_orders', r'(?:co )?bao nhieu don(?: hang)? (?:bi )?huy'),
@@ -72,9 +132,9 @@ def _intent(text):
         if re.fullmatch(pattern, text):
             return operation, None, None
     match = re.fullmatch(r'ban (?:duoc )?bao nhieu ([\w]+)', text)
-    if match:
+    if match and match[1] not in ('tien', 'dong', 'vnd', 'don', 'khach'):
         return 'quantity', None, match[1]
-    match = re.fullmatch(r'top (\d+) (mat hang|san pham|mon|khach hang) '
+    match = re.fullmatch(r'top (\d+) (mat hang|san pham|hang|mon|khach hang) '
                          r'(ban chay(?: nhat)?|theo doanh thu(?: cao nhat)?|mua nhieu tien nhat|theo so don)', text)
     if match:
         product = match[2] != 'khach hang'
@@ -101,8 +161,16 @@ def select_question(text: str) -> dict:
         mentions[token] = next(v for v in match.groups() if v is not None).strip()
         return token
     text = re.sub(r'["“]([^"“”]+)["”]|[\'‘]([^\'‘’]+)[\'’]', quoted, text)
-    raw_words = re.findall(r'\w+', text)
-    text = ' '.join(re.sub(r'[?!.,;:]', ' ', _fold(text)).split())
+    text = _protect_unquoted_groups(text, mentions)
+    capture = _quantity_unit_span(text)
+    unit_token, raw_unit = None, None
+    if capture is not None:
+        raw_unit, left, right = capture
+        if raw_unit not in mentions and _fold(raw_unit) not in ('tien', 'dong', 'vnd', 'don', 'khach'):
+            unit_token = f'x{len(mentions)}x'
+            mentions[unit_token] = raw_unit
+            text = text[:left] + unit_token + text[right:]
+    text = _language_forms(' '.join(re.sub(r'[?!.,;:]', ' ', _fold(text)).split()))
     parts = re.split(r'\bso voi\b', text)
     if len(parts) > 2:
         return reject('multiple_comparisons')
@@ -137,18 +205,22 @@ def select_question(text: str) -> dict:
     comparison = None
     if len(parts) == 2:
         comparison, rest = _period(parts[1])
-        if comparison is None or rest:
+        if comparison is None:
             return reject('unrecognized_comparison')
+        metric_text = _clean(metric_text + ' ' + rest)
         if period['kind'] == 'this_month' and comparison['kind'] == 'previous_month':
             comparison['kind'] = 'previous_month_same_elapsed'
+        elif period['kind'] == 'month' and comparison['kind'] == 'previous_month':
+            comparison['kind'] = 'previous_calendar_month'
+        elif period['kind'] == 'quarter' and comparison['kind'] == 'previous_quarter':
+            comparison['kind'] = 'previous_calendar_quarter'
     operation, ranking, unit = _intent(_clean(metric_text))
     if operation is None:
         return reject('unrecognized_operation_or_scope')
     if unit is not None:
-        spellings = {word.casefold() for word in raw_words if _fold(word) == unit}
-        if len(spellings) != 1:
+        if unit_token is None or unit != unit_token:
             return reject('ambiguous_unit_spelling')
-        unit = spellings.pop()
+        unit = raw_unit
     filters['unit_mention'] = unit
     plan = dict(version='1.0', status='supported', unsupported_reason=None,
                 operation=operation, expected_type=OPERATIONS[operation], period=period,

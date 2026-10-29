@@ -1,7 +1,7 @@
 """Question-only sampling and validation for local AI plan annotation audits."""
 from collections import defaultdict
 
-from queryplan import PlanValidationError, validate_plan
+from queryplan import PlanValidationError, UnsupportedCapability, check_capability, validate_plan
 from .manifest import ManifestError, object_hash
 
 
@@ -79,3 +79,25 @@ def validate_annotations(packet, annotations):
             require(row.get('plan') is None, 'unsupported/uncertain annotation must keep plan null')
     require(seen == set(expected), 'annotations must cover the entire frozen sample')
     return rows
+
+
+def preflight_annotations(packet, annotations):
+    """New receipt only: capability check is not catalog or execution validation."""
+    entries = []
+    for annotation in validate_annotations(packet, annotations):
+        row = dict(id=annotation['id'], question_sha256=annotation['question_sha256'],
+                   schema_status='not_applicable', capability_status='not_checked',
+                   resolution_status='not_checked', execution_status='not_run', reason=None)
+        if annotation['plan'] is not None:
+            row['schema_status'] = 'valid'
+            try:
+                check_capability(annotation['plan'])
+                row['capability_status'] = 'supported'
+            except UnsupportedCapability as exc:
+                row.update(capability_status='unsupported_capability', reason=str(exc))
+        entries.append(row)
+    result = dict(version='1.0', packet_sha256=packet['packet_sha256'],
+                  annotations_payload_sha256=object_hash(
+                      {k: v for k, v in annotations.items() if k != 'annotations_sha256'}),
+                  entries=entries)
+    return result | dict(receipt_sha256=object_hash(result))

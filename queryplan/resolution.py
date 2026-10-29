@@ -1,6 +1,6 @@
 """Resolve validated periods and exact normalized mentions against canonical data."""
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 import csv
 import unicodedata
 
@@ -146,6 +146,9 @@ def _period_bounds(spec, periods, primary):
     if kind == 'before_period' and primary is not None:
         if primary.start.toordinal() <= (primary.end - primary.start).days + 1:
             raise PeriodResolutionError('comparison would precede year 1')
+    if (kind in ('previous_calendar_month', 'previous_calendar_quarter') and primary is not None
+            and primary.start.year == 1 and primary.start.month == 1):
+        raise PeriodResolutionError('calendar comparison would precede year 1')
 
 
 def resolve_period(spec: dict, periods: Periods, primary: DateRange | None = None) -> DateRange:
@@ -169,6 +172,13 @@ def resolve_period(spec: dict, periods: Periods, primary: DateRange | None = Non
         return periods.before(primary)
     if kind == 'previous_month_same_elapsed':
         return periods.previous_month(same_elapsed=True)
+    if kind in ('previous_calendar_month', 'previous_calendar_quarter'):
+        if primary is None:
+            raise ValueError(f'{kind} requires primary calendar period')
+        previous_end = primary.start - timedelta(days=1)
+        if kind == 'previous_calendar_month':
+            return periods.month(previous_end.month, previous_end.year)
+        return periods.quarter((previous_end.month - 1) // 3 + 1, previous_end.year)
     simple = {name: getattr(periods, name) for name in (
         'today', 'yesterday', 'this_week', 'previous_week', 'this_month',
         'previous_month', 'year_to_date')}

@@ -12,7 +12,8 @@
 | Inventory capability / verifier mới | [contract và lệnh](capability-verification.md), [hướng dẫn dev-only](../verification/AGENTS.md) | `python scripts/harness.py context verification/runner.py`; manifest local trước gold |
 | Audit plan annotation | [phương pháp/kết luận](plan-annotation-audit.md), [task evidence](tasks/2026-10-29-plan-annotation-audit.md) | `python scripts/harness.py context verification/audit.py`; artifact từng câu chỉ reports/ |
 | QueryPlan/NLU tiếp theo | [executor v1](queryplan.md), [hướng dẫn queryplan](../queryplan/AGENTS.md), [quyết định](../ai_collaboration/DECISIONS.md) | `python scripts/harness.py context queryplan/executor.py`; NLU chưa có |
-| Gemini/LLM review | [workflow](../ai_collaboration/README.md), [vòng002 hiện tại](../ai_collaboration/rounds/002_capability_readiness/README.md), [hướng dẫn](../ai_collaboration/AGENTS.md) | Snapshot source d99cac2; chưa có phản hồi vòng002 |
+| Triển khai sau Argon | [contract và evidence](tasks/2026-10-29-selector-calendar-implementation.md), [validation](validation.md) | Đã sửa intent/span/preflight/calendar/grammar; v4 396/396, chưa NLU |
+| Gemini/LLM review | [workflow](../ai_collaboration/README.md), [vòng002 hiện tại](../ai_collaboration/rounds/002_capability_readiness/README.md), [hướng dẫn](../ai_collaboration/AGENTS.md) | Argon lượt02 đã review và triển khai bước tiếp; phản hồi cũ giữ nguyên |
 | Tác vụ qua nhiều phiên | [mẫu task](tasks/TEMPLATE.md) hoặc kế hoạch đang làm | Giữ acceptance, evidence, next action trong cùng hồ sơ |
 
 [Chỉ mục ngữ cảnh theo file](context-index.json) trỏ tới quyết định và bằng chứng có liên quan; lệnh `context` tự chọn các mục phù hợp. Không đọc toàn bộ GEMINI_HANDOFF hoặc rounds để bắt đầu mọi tác vụ.

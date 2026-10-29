@@ -21,7 +21,7 @@ PERIOD_KINDS = ('today', 'yesterday', 'last_days', 'this_week', 'previous_week',
                 'month', 'quarter', 'year_to_date', 'tet', 'date_range')
 COMPARISON_KINDS = ('yesterday', 'previous_week', 'previous_month',
                     'previous_month_same_elapsed', 'month', 'quarter', 'tet',
-                    'date_range', 'before_period')
+                    'date_range', 'before_period', 'previous_calendar_month', 'previous_calendar_quarter')
 UNSUPPORTED_REASONS = ('unsupported_domain', 'unsupported_answer_type',
     'unsupported_comparison_or_denominator', 'ambiguous_question', 'unparseable_time')
 

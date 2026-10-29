@@ -13,6 +13,11 @@ class UnsupportedCapability(ValueError):
     pass
 
 
+def check_capability(normalized_plan: dict) -> None:
+    """Check v1 combinations after validate_plan; no data or plan mutation."""
+    _capability(normalized_plan)
+
+
 def _capability(plan):
     op, filters = plan['operation'], plan['filters']
     if filters['unit_mention'] is not None and op != 'quantity':
@@ -31,6 +36,10 @@ def _capability(plan):
             raise UnsupportedCapability('before_period chỉ hỗ trợ so trước Tết')
         if kind == 'previous_month_same_elapsed' and main != 'this_month':
             raise UnsupportedCapability('same_elapsed chỉ hỗ trợ so tháng này')
+        for calendar_kind, primary_kind in (('previous_calendar_month', 'month'),
+                                            ('previous_calendar_quarter', 'quarter')):
+            if kind == calendar_kind and main != primary_kind:
+                raise UnsupportedCapability(f'{calendar_kind} chỉ hỗ trợ kỳ chính {primary_kind}')
 
 
 @dataclass(frozen=True)
@@ -64,7 +73,7 @@ class QueryExecutor:
         if plan['status'] == 'unsupported':
             return _abstain('unsupported_plan', 'semantic', plan['unsupported_reason'])
         try:
-            _capability(plan)
+            check_capability(plan)
         except UnsupportedCapability as exc:
             return _abstain('unsupported_capability', 'capability', str(exc))
 

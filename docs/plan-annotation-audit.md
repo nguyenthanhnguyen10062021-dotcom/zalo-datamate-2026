@@ -1,5 +1,9 @@
 # Audit annotation từ câu hỏi, không dùng gold — 2026-10-29
 
+**Cập nhật sau triển khai:** đã sửa intent/span và mở grammar có giới hạn theo [task sau Argon](tasks/2026-10-29-selector-calendar-implementation.md); v3/v4 là manifest mới, không sửa v2 hoặc annotation41. Phần bên dưới giữ snapshot lượt audit ban đầu, khi chưa sửa grammar.
+
+Receipt mới `preflight_capability_v2.json` local chứa receipt schema/capability riêng và envelope có source/input/cache hashes: 23 plan qua capability,18 không có plan nên not_checked. Optional filter-only resolution: 4 resolved,19 not_required; không tính đáp án/scorer, không kiểm period hoặc execution. `verification.audit.preflight_annotations` không sửa annotations và không truy cập dữ liệu; phần filter resolution do caller dev thực hiện riêng với SalesMetrics validation trước. Original packet/annotation file hashes và payload digests không đổi. Đây không phải human adjudication hoặc chứng nhận diễn giải đúng.
+
 Audit tiếp theo frozen manifest v2 của [capability verification](capability-verification.md). Không sửa grammar/manifest/resolver/business, không chạy scorer, không mở answers hoặc report chứa gold từng câu trong lượt audit. Annotation lưu local, không tự chuyển thành verifier selection mới.
 
 ## Kết luận ca chưa resolve đơn vị
@@ -45,9 +49,9 @@ Annotation payload SHA256: `34eef5cc796453f2bc1d5012274d2d4b80907182dcf584f72747
 
 Annotator là **Codex AI**, chưa có human hoặc independent reviewer adjudication. Agent đã thấy số tổng hợp chấm train của lượt trước; corpus cũng đã dùng trong phát triển trước đây. Vì vậy “độc lập gold” ở đây nghĩa là không mở gold/report gold từng câu, không tính/scorer đáp án để quyết định annotation trong lượt này; không có nghĩa blind holdout, annotation chuẩn tuyệt đối hoặc chưa từng tiếp xúc train.
 
-`verification/audit.py` chỉ hỗ trợ sampling và kiểm integrity/completeness/schema/provenance. Validator không chứng nhận diễn giải đúng hoặc chứng minh lời khai provenance của annotator; digest không chống tác giả cố ý sửa rồi tính lại. Tests chỉ dùng fixture tổng hợp.
+`verification/audit.py` hỗ trợ sampling, kiểm integrity/completeness/schema/provenance và nay có capability preflight bằng receipt mới. Validator không chứng nhận diễn giải đúng hoặc chứng minh lời khai provenance của annotator; digest không chống tác giả cố ý sửa rồi tính lại. Tests chỉ dùng fixture tổng hợp.
 
-## Bước tiếp theo
+## Bước tiếp theo đã đề xuất tại thời điểm audit
 
 1. Sửa intent tiền/doanh thu bằng luật tổng quát và synthetic contrast tests trước, giữ nguyên resolver/catalog. Đây là sửa lỗi đã có evidence rulebook, không dùng đáp án gold.
 2. Mở grammar theo các họ ngôn ngữ được annotate: thời gian/viết tắt, comparison neo kỳ, ranking/list và nhóm hàng rõ scope. Giữ annotation sample này là dev-exposed; không gọi đánh giá trên nó là held-out, không hứa quota câu mới.

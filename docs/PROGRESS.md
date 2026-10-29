@@ -4,7 +4,17 @@ Ngày theo Asia/Saigon. Nhánh làm việc: `VuongNguyen`.
 
 Người dùng yêu cầu commit/push inventory-verifier và audit annotation, đồng thời mở vòng phản biện Gemini mới. Xác định revision bàn giao bằng git log; các ghi chú “chưa commit/push” bên dưới thuộc thời điểm kiểm chứng trước bàn giao.
 
-Source inventory/verifier/audit đã commit tại **`d99cac2`**. Đã chuẩn bị [vòng002 readiness review](../ai_collaboration/rounds/002_capability_readiness/README.md), handoff tự chứa 37 source/test/docs từ revision này với SHA256 từng file. Gói chỉ có source/synthetic/aggregate, chưa gửi Gemini và chưa có phản hồi. Người dùng chuyển file theo prompt; phản hồi dự kiến `GEMINI_RESPONSE_01.md` của vòng002. Kiểm tra trước bàn giao mới chạy: full **487 passed/2 deselected**, bare **488 passed/1 skip cũ**, fast qua; không chấm lại gold trong tác vụ đóng gói.
+Source inventory/verifier/audit đã commit tại **`d99cac2`**. Sau [Argon lượt02](../ai_collaboration/rounds/002_capability_readiness/README.md), người dùng giao triển khai bước tiếp; bản Flash và phản hồi/review cũ được giữ riêng làm lịch sử.
+
+## Triển khai sau Argon — trạng thái mới nhất 2026-10-29
+
+- Đã sửa intent tiền/đơn và capture span đơn vị; public `check_capability` và audit preflight tạo receipt riêng, giữ nguyên 41 annotation. Thêm comparison-only `previous_calendar_month/quarter` neo kỳ chính và grammar có giới hạn. Giữ plan1.0 additive, semantics cũ và các so sánh fixed-vs-as_of-relative hợp lệ; không sửa loader/business/evaluator hoặc tích hợp LLM.
+- V3 **126/126** compared/matched, không còn abstain. V4 **396 selected/3000**, **396 compared/matched**, **0 mismatch/abstain/execution_errors**, 8 operation; ngoài selection2604. Giữ toàn bộ126 ca v3, thêm270. Top_customers/share chỉ có synthetic, chưa selected train. Đây là hồi cứu grammar+executor, chưa PA model/NLU.
+- Preflight: 23 plan qua capability; 18 annotation không plan không kiểm. Optional filter resolution: 4 resolved,19 không cần; không chấm đáp án hoặc chứng nhận diễn giải đúng. Packet/annotations/digests cũ không đổi.
+- Kiểm chứng cuối: **58 tests mới đạt**; full **545 passed, 2 local_data deselected**; bare **546 passed, 1 skip helper cũ**. Data profile exit0, local_data1passed/1skip; baseline riêng **417 selected, 8 skipped, 409/409 compared/matched**, 0 lỗi. Giao compared v4/baseline143, hợp662; không cộng hai mẫu số hoặc suy toàn-train PA.
+- [Contract, acceptance và execution record](tasks/2026-10-29-selector-calendar-implementation.md), [validation](validation.md). Code hiện trong working tree, chưa commit/push tác vụ này; chưa hosted CI/Linux. Next action: audit question-only các bucket còn lại; scalar/hai scope/domain mới cần contract riêng, model/runner chưa triển khai.
+
+Các mục phía dưới giữ bằng chứng từng mốc trước triển khai; “chưa sửa grammar/intent” trong mốc audit/v2 mô tả thời điểm đó.
 
 ## Audit annotation trước khi mở grammar — cập nhật mới nhất 2026-10-29
 
@@ -59,7 +69,7 @@ Hồ sơ harness: [plan và execution record](superpowers/plans/2026-10-29-harne
 | Nghiệp vụ bán hàng | 10 API; có rulebook, period/calendar, filter và Answer |
 | Patch sau review Gemini | Đã áp dụng vào code chính, thêm 39 ca kiểm thử trong repo |
 | Contract QueryPlan v1 | Đã có validator Python nghiêm ngặt; JSON Schema/helper trong hồ sơ cũ vẫn là đề xuất, chưa cung cấp schema constrained decoding |
-| Validator, resolver, dispatcher | Đã tích hợp thành QueryExecutor trên 10 API, kiểm thử tổng hợp; chưa đo gold executor/NLU |
+| Validator, resolver, dispatcher | QueryExecutor trên10API có synthetic; verifier grammar+executor v4 khớp396/396 selected train, chạm8API; chưa PA model/NLU |
 | Model câu hỏi → QueryPlan | Chưa chọn model, weights hoặc runtime inference |
 | PA/coverage toàn hệ thống, Docker và runner nộp bài | Chưa hoàn thiện |
 

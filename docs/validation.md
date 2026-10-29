@@ -1,5 +1,18 @@
 # Kiểm chứng bản sửa nghiệp vụ ngày 2026-10-29
 
+## Sau Argon: intent/span, preflight, calendar và grammar — mới nhất
+
+[Task contract/evidence](tasks/2026-10-29-selector-calendar-implementation.md) được chốt trước sửa code. Bốn file tests tổng hợp mới có **58 ca đạt**, có RED→GREEN cho intent/span, preflight, calendar và grammar, negative contrasts và compatibility. Không đổi loader/business/evaluator/requirements; không LLM.
+
+- `doctor`: Python3.14.10, cả5 pinned packages khớp, local data ready. `harness.py check --profile data`: exit0, full **545 passed, 2 deselected**; local_data **1 passed, 1 skipped** helper evaluator cũ. Bare `pytest -q -rs`: **546 passed, 1 skipped** cùng helper. Chưa hosted CI/Linux.
+- Freeze v3 sau Task1 trước scoring: **126 selected/compared/matched**, 0 mismatch/abstain/execution_errors,7 operation, exit0. V3 giữ hash selector Task1; hiện stale với selector Task2, không tự rebuild/replay. V1/v2 và ca abstain lịch sử được giữ nguyên.
+- Freeze v4 sau Task2 synthetic checks trước scoring: total3000, **selected396, outside_selection2604, compared396, matched396**, 0 mismatch/abstain/execution_errors, exit0. Status answered395/unanswerable1. Phân bố: revenue242, order_count39, revenue_growth32, cancellation_rate26, average_order_value25, cancelled_orders20, top_products10, quantity2. Top_customers/share chưa selected train; synthetic không thay thế kiểm chứng train.
+- V4 giữ126 selected v3 và thêm270. Baseline legacy chạy riêng: selected417, skipped8, compared409, matched_gold409, matched_legacy409,errors=[]. Giao compared v4/baseline143, hợp662; không cộng396+409 hoặc gọi662 là một lần đo PA thống nhất.
+- Preflight envelope v2 mới: 23 supported capability,18 not_checked; optional filter resolution4resolved/19not_required, không answer/scorer. Kiểm receipt/envelope/source hashes và original input hashes; giữ nguyên packet/annotations41. Đây không phải annotation accuracy, period validation hoặc execution evidence.
+- Report v4 source hashes khớp runtime cuối; source không sửa sau lượt kiểm cuối. Sau scoring chỉ cập nhật tài liệu. Review diff do chính agent triển khai, không có independent adjudication mới. Grammar không tuning theo mismatch hoặc public test. Toàn bộ rows/manifests/receipts ở reports/ ignored; đây là retrospective dev evidence, chưa blind holdout, model PA hoặc toàn-train coverage.
+
+Các mục bên dưới là snapshot kiểm chứng các mốc trước đó.
+
 ## Audit plan annotation — 2026-10-29
 
 - Nền 4fd268e cộng working tree inventory/verifier đã có; thêm utility `verification/audit.py` và synthetic tests. Không sửa selector/manifest/resolver/business/evaluator. [Phương pháp và kết luận](plan-annotation-audit.md), [task record](tasks/2026-10-29-plan-annotation-audit.md).

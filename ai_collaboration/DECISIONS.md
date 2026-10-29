@@ -94,6 +94,27 @@ Code/test đã đẩy tại `c567b29`; hồ sơ trao đổi đã đẩy tại `2
 - Các annotation là AI-reviewed, chưa human/independent adjudication hoặc gold plan chuẩn. Freeze packet/annotations+digests trước mở grammar; validator kiểm integrity/schema, không chứng minh semantics đúng. [Audit và giới hạn](../docs/plan-annotation-audit.md), [task/evidence](../docs/tasks/2026-10-29-plan-annotation-audit.md).
 - Bước kế tiếp sửa intent tiền bằng synthetic tests rồi mở họ grammar ngôn ngữ và comparison neo kỳ. Hai Filters/scalar/domain mới cần contract riêng; không ép vào v1 hoặc loại câu theo gold. Không đổi source grammar/runtime/manifest hoặc chạy chấm trong lượt này.
 
+## Review Argon vòng002 — nhận phản hồi, chưa áp dụng sửa (2026-10-29)
+
+- Người dùng đính chính bản cũ là Flash, bản mới là Argon/đối tượng phản biện chính. Giữ nguyên hai file; attribution theo người dùng dù header bản mới tự ghi Flash. Xem [routing và provenance](rounds/002_capability_readiness/README.md).
+- [Codex review Argon](rounds/002_capability_readiness/CODEX_ARGON_REVIEW_01.md) chấp nhận bug intent và neo kỳ ở selector, tái hiện thêm va chạm dấu unit; giữ phân biệt schema/capability và helper-direct/executor. Direct API robustness và table scorer là giới hạn riêng, không tự thành blocker tất cả v1. Chưa áp patch hoặc thêm primitive vào contract.
+- Kế hoạch split34/10 trên44 train của Argon không hợp lệ với30 train; business-disjoint khác file-family-disjoint, không gọi split hồi cứu là blind và không đưa public test vào tuning. Gate10/10API/30dòngregex không tự bảo đảm correctness.
+- Thư tiếp theo cho **Argon** ở CODEX_REPLY_TO_ARGON_01.md; không dùng thư yêu cầu phần thiếu của Flash. Chưa gửi tự động, chưa có phản hồi02.
+
+## Review Argon vòng002/lượt02 — đồng thuận kỹ thuật, chưa triển khai (2026-10-29)
+
+- Đã nhận và lưu nguyên response02,31250bytes. Argon rút I2 là bug Important, hạ I4 không chặn, chỉnh dataset/split/bucket/hash claims. [Review Codex02](rounds/002_capability_readiness/CODEX_ARGON_REVIEW_02.md) ghi nhận đủ căn cứ chuẩn bị task intent/span/preflight trước, spec neo kỳ sau. Đây là kết luận review, không ghi người dùng đã duyệt primitive/patch.
+- Không áp blanket guard fixed-period vs as_of-relative trong I3-A: probe date_range2026-03-01 so yesterday (as_of2026-03-04) là plan hợp lệ hiện có nhưng guard sẽ reject. Chỉ ràng buộc main-kind cho comparison kinds mới khi có spec; giữ semantics cũ.
+- Chưa sửa runtime/selector/manifest/annotations.18 targeted tests mới đạt, fast qua, không gold/cache/public-test hay commit/push. “Ready” chỉ đủ cho dev/baseline trong phạm vi review, không chứng nhận không còn lỗi. Chưa cần thêm vòng phản biện cho Task1 nếu không có phản chứng mới.
+
+## E004 — Triển khai sau Argon theo ủy quyền người dùng (2026-10-29)
+
+- Người dùng giao “triển khai tiếp theo thứ tự bạn thấy hợp lí”. Chốt [task contract/acceptance](../docs/tasks/2026-10-29-selector-calendar-implementation.md) trước code: intent/span và preflight trước, calendar comparison/grammar có giới hạn sau. Không LLM, domain mới, dependency, business/evaluator patch hoặc commit/push trong tác vụ này.
+- Public check_capability giữ riêng schema/capability, không data/mutation. Receipt preflight mới không sửa41 annotation hoặc chứng nhận semantics. Optional filter resolution do caller kiểm riêng, không answer/scorer;23 plan capability supported,4 cần nhãn resolve được.
+- Plan1.0 thêm comparison-only previous_calendar_month/quarter với main-kind tương ứng; resolve năm kỳ chính trước, lùi trọn kỳ lịch. Giữ old previous_month theo as_of, same_elapsed và fixed-vs-relative hợp lệ. Validator cũ reject new kinds an toàn; phải xem versioning lại khi phát hành consumer/schema/model.
+- Intent tiền/đơn và unit span bảo toàn NFC/casefold; grammar chỉ thêm các họ audit với synthetic contrasts, không ID/catalog/gold trong selector. Hai filter scopes/scalar/domain mới vẫn unsupported. Không chỉnh grammar sau khi thấy scoring v3/v4.
+- Full545/bare546 đạt, skip helper cũ;58 tests mới đạt. V4 selected/compared/matched396/3000,0mismatch/abstain/execution_errors,8operation; top_customers/share synthetic-only. Baseline riêng409/409; giao143/hợp662, không cộng mẫu số hoặc suy PA toàn train/model. Review cuối do chính agent triển khai; chưa độc lập/human adjudication, holdout mới hoặc hosted CI/Linux. [Validation](../docs/validation.md).
+
 ## Mẫu ghi quyết định mới
 
 - ID và ngày:

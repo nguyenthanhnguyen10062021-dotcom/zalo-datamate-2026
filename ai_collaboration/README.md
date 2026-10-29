@@ -2,13 +2,13 @@
 
 Thư mục này dùng để đưa bối cảnh từ repo sang Gemini web, nhận phản biện rồi đưa về Codex kiểm chứng và triển khai. Mỗi vòng tập trung vào một vấn đề. Có thể dùng cùng cách này với LLM khác.
 
-**Điểm tiếp tục 2026-10-29:** source inventory/verifier và audit đã commit tại `d99cac2`, executor ở `4fd268e`. Mở [vòng002 — readiness review](rounds/002_capability_readiness/README.md) để hỏi Gemini về trạng thái hiện tại; gói tự chứa neo source `d99cac2`. Chưa có phản hồi vòng002. Các snapshot vòng001 bên dưới là lịch sử; không dùng làm source executor/verifier hiện hành.
+**Điểm tiếp tục 2026-10-29:** source inventory/verifier và audit tại `d99cac2`, executor ở `4fd268e`. Sau [Argon lượt02](rounds/002_capability_readiness/README.md), người dùng giao triển khai; [task mới](../docs/tasks/2026-10-29-selector-calendar-implementation.md) đã hoàn tất intent/span/preflight/calendar/grammar trong working tree, v4 đạt396/396, chưa commit/push hoặc LLM. Bản Flash, phản hồi và các snapshot bên dưới giữ nguyên làm lịch sử; handoff d99cac2 không chứa thay đổi mới.
 
-## Bắt đầu ngay
+## Cách mở vòng002 trước đây (lịch sử)
 
 1. Mở cuộc trò chuyện mới trên Gemini, đính kèm [GEMINI_HANDOFF vòng002](rounds/002_capability_readiness/GEMINI_HANDOFF.md).
 2. Copy và gửi [GEMINI_START_PROMPT vòng002](rounds/002_capability_readiness/GEMINI_START_PROMPT.md). Năm câu hỏi chi tiết nằm đầu handoff và trong [REVIEW_REQUEST](rounds/002_capability_readiness/REVIEW_REQUEST.md).
-3. Nhận file `GEMINI_RESPONSE_01.md` (vòng002), lưu nguyên vào `rounds/002_capability_readiness/`, rồi giao Codex kiểm chứng. Chưa có phản hồi, chưa tự gửi lên Gemini hoặc tuyên bố đã được Gemini review.
+3. Nhận file response, lưu nguyên vào `rounds/002_capability_readiness/`, rồi giao Codex kiểm chứng. Vòng002 đã nhận Flash/Argon theo routing trên; chưa gửi tự động hoặc có review Gemini đối với code triển khai mới.
 
 ## Cách bắt đầu vòng001 trước đây (lịch sử)
 
